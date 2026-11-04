@@ -275,6 +275,29 @@ export class Store {
       : (this.db.prepare(`SELECT * FROM events ORDER BY id DESC LIMIT ?`).all(limit) as EventRow[]);
   }
 
+  // ---- public aggregates -------------------------------------------------------------------
+
+  /** Counts and a median for the landing page. Nothing per order or per person. */
+  publicStats(): { delivered: number; refunds: number; overpaymentsReturned: number; medianDeliverySec: number | null } {
+    const n = (sql: string) => (this.db.prepare(sql).get() as { n: number }).n;
+    const secs = (
+      this.db
+        .prepare(
+          `SELECT (f.updated_at - p.first_seen_at) / 1000.0 AS s FROM fulfillments f JOIN payments p ON p.key = f.payment_key
+           WHERE f.state = 'memo_sent' ORDER BY s`,
+        )
+        .all() as Array<{ s: number }>
+    )
+      .map((r) => r.s)
+      .filter((s) => s > 0);
+    return {
+      delivered: n(`SELECT COUNT(*) AS n FROM fulfillments WHERE state = 'memo_sent'`),
+      refunds: n(`SELECT COUNT(*) AS n FROM payments WHERE state = 'refunded'`),
+      overpaymentsReturned: n(`SELECT COUNT(*) AS n FROM payments WHERE excess_state = 'refunded'`),
+      medianDeliverySec: secs.length ? Math.round(secs[Math.floor(secs.length / 2)]!) : null,
+    };
+  }
+
   // ---- address pool (per-order diversified addresses) ----------------------------------------
 
   addPoolAddress(address: string, index: number, shopUa: string, now: number): boolean {

@@ -5,7 +5,8 @@
     "label": "Test gift card",
     "product_id": "test-gift-card-code",
     "package_id": "test-gift-card-code<&>10",
-    "value_usd": 10
+    "value_usd": 10,
+    "note": "Bitrefill test card: the code lands in your wallet."
   },
   {
     "sku": "test-fail",
@@ -13,7 +14,8 @@
     "label": "Test gift card (always fails)",
     "product_id": "test-gift-card-code-fail",
     "package_id": "test-gift-card-code-fail<&>10",
-    "value_usd": 10
+    "value_usd": 10,
+    "note": "Bitrefill fails it on purpose, so you see the automatic refund."
   },
   {
     "sku": "test-big",
@@ -21,7 +23,8 @@
     "label": "Test gift card $20 (over the per-order limit)",
     "product_id": "test-gift-card-code",
     "package_id": "test-gift-card-code<&>20",
-    "value_usd": 20
+    "value_usd": 20,
+    "note": "Over the $10 per-order cap: refused and refunded."
   },
   {
     "sku": "google-play-india-100",
@@ -29,6 +32,7 @@
     "label": "Google Play India ₹100 (real card, not on sale)",
     "product_id": "google-play-india",
     "package_id": "google-play-india<&>100",
-    "value_usd": 1.14
+    "value_usd": 1.14,
+    "note": "Refunded while real purchases are switched off."
   }
 ]

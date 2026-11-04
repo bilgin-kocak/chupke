@@ -28,7 +28,10 @@ describe("web", () => {
     expect(html).toContain("0.01 TAZ");
     expect(html).toContain("Paste a fresh shielded address from your wallet (starts with utest1). Your code or refund is sent here.");
     expect(html).toContain("Get payment QR");
-    expect(html).not.toMatch(/<script[^>]+src=|<link[^>]+href=/); // no external assets
+    expect(html).not.toMatch(/<script[^>]+src=|<link[^>]+href="(?!data:)|<img[^>]+src="(?!data:)|url\((?!"?data:)/); // no external assets
+    expect(html).toContain("Gift cards, bought");
+    expect(html).toContain("Who sees what");
+    expect(html).toContain("Bitrefill fails it on purpose"); // the allowlist note explains each test card
     expect(res.headers.get("content-security-policy")).toContain("default-src 'none'");
   });
 

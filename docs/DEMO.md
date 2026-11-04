@@ -20,10 +20,12 @@ Judges score "Works" against the pitch, so every clause gets something visible o
 
 ## Script
 
-1. **Hook (10 s).** "Chupke means 'quietly'. You pay shielded ZEC and your gift card code arrives as an encrypted
-   memo in your own wallet. No account, no email, refunds are automatic and you're never charged twice."
-2. **Shop (15 s).** Show the products, the guardrails text and the reply-address box. "The only thing I give the shop
-   is a fresh shielded address for my answer."
+1. **Hook (10 s).** Open the landing page on the hero (the phone with the QR and the memo bubble). "Chupke means
+   'quietly'. You pay shielded ZEC and your gift card code arrives as an encrypted memo in your own wallet. No account,
+   no email, refunds are automatic and you're never charged twice." Scroll past the live stats strip: these are real
+   testnet numbers from the database.
+2. **Shop (15 s).** Click **Buy a test card**. Show the four cards (each one demonstrates a path), the reply-address
+   box and the "Shop online" line. "The only thing I give the shop is a fresh shielded address for my answer."
 3. **Pay (30 s).** In Zingo PC, copy a new receive address and paste it. Click **Get payment QR**, then scan or click
    **Open in wallet**. Show the amount and the pre-filled memo (or paste the memo with **Copy memo**), and send.
 4. **Watch (30 s).** The timeline moves from *Payment seen* (mempool) to *confirmed*, *Buying your gift card*,
