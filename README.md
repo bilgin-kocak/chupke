@@ -77,7 +77,8 @@ docker compose up --build
 - The first build compiles zingo-cli from a pinned zingolib commit, which takes about 5–15 minutes. To skip the
   compile, use the image CI publishes: `docker compose pull && docker compose up -d`.
 - For a public URL, add `--profile tls` (Caddy, automatic HTTPS for `DOMAIN`) or `--profile tunnel` (a Cloudflare
-  quick tunnel). [docs/DEPLOY.md](docs/DEPLOY.md) has the full steps.
+  quick tunnel). [docs/DEPLOY.md](docs/DEPLOY.md) has the full steps, including Railway (one service, both
+  processes, `scripts/railway-start.ts`).
 - The web listens on :8080. The worker restores the shop wallet from `ZINGO_SEED` on first start; remove the seed from
   `.env` afterwards. Set `WALLET_MODE=split` to watch with a view-only inbox.
 - `GET /dashboard` uses basic auth (`chupke` / `DASHBOARD_PASSWORD`).
