@@ -103,6 +103,8 @@ export const AllowlistEntry = z.object({
   package_id: z.string().min(1).optional(),
   value: z.number().positive().optional(),
   value_usd: z.number().positive(),
+  /** Shown on the shop card: what this product demonstrates. */
+  note: z.string().max(90).optional(),
 });
 export type AllowlistEntry = z.infer<typeof AllowlistEntry>;
 

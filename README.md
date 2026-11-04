@@ -8,9 +8,14 @@
 
 [![ci](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml)
 
-| Shop | Order, waiting (its own address) | Order, delivered | Order, refunded | Operator dashboard |
+<img src="docs/img/home.png" alt="Chupke landing page: gift cards, bought quietly, with a phone showing an order QR and a shielded memo carrying the code">
+
+| Order, waiting (its own address) | Order, delivered | Order, refunded | Operator dashboard | Phone |
 | --- | --- | --- | --- | --- |
-| <img src="docs/img/home.png" width="190" alt="Shop page"> | <img src="docs/img/order-waiting.png" width="190" alt="Order page waiting for payment, with its own address (QR and memo blurred)"> | <img src="docs/img/order-sent.png" width="190" alt="Order page after delivery (QR and memo blurred)"> | <img src="docs/img/order-refunded.png" width="190" alt="Order page after an automatic refund (QR and memo blurred)"> | <img src="docs/img/dashboard.png" width="300" alt="Dashboard with addresses masked"> |
+| <img src="docs/img/order-waiting.png" width="220" alt="Order page waiting for payment, with its own address (QR and memo blurred)"> | <img src="docs/img/order-sent.png" width="220" alt="Order page after delivery (QR and memo blurred)"> | <img src="docs/img/order-refunded.png" width="220" alt="Order page after an automatic refund"> | <img src="docs/img/dashboard.png" width="220" alt="Operator dashboard with addresses masked"> | <img src="docs/img/phone.png" width="110" alt="Landing page on a phone"> |
+
+The UI follows [DESIGN.md](DESIGN.md): tokens, components and rules in the DESIGN.md format, implemented in
+`src/web/theme.ts` with no third-party fonts, scripts or CDNs.
 
 | Track | What Chupke contributes |
 | --- | --- |
@@ -203,7 +208,7 @@ balance is 0 and none was needed for the demo. The real-product path is built an
 ## Repository map
 
 `src/` holds config, logging, ids, `db/`, `zcash/` (wallet interface, zingo adapter, memo, ZIP 321, address checks),
-`bitrefill/` (client, limiter, redemption), `engine/` (guard, route, fulfill, refund, tick), `web/` (server, views, QR),
+`bitrefill/` (client, limiter, redemption), `engine/` (guard, route, fulfill, refund, tick), `web/` (server, views, theme, QR),
 and `worker.ts`. `scripts/` holds the zingo-cli build, smoke tests, buy-once, product search (`find-products`), the MCP catalog, buyer pay/inbox, the refund suite,
 the rescan, inbox creation and the evidence table. `test/` holds the vitest suite. `docs/` holds WALLET.md (Zcash tooling),
 NOTES.md (runs and decisions) and EVIDENCE.md.

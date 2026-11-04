@@ -78,7 +78,22 @@ export function publicStatus(store: Store, order: OrderRow, cfg: Pick<WebConfig,
 
 export function createApp(store: Store, cfg: WebConfig) {
   const allowlist = loadAllowlist(cfg.ALLOWLIST_PATH);
-  const products = allowlist.map((e) => ({ sku: e.sku, label: e.label, valueUsd: e.value_usd, priceTaz: zatToZec(priceZat(e.value_usd, cfg.DEMO_ZAT_PER_USD)) }));
+  const products = allowlist.map((e) => ({
+    sku: e.sku,
+    label: e.label,
+    valueUsd: e.value_usd,
+    priceTaz: zatToZec(priceZat(e.value_usd, cfg.DEMO_ZAT_PER_USD)),
+    kind: e.kind,
+    note: e.note,
+  }));
+  // The hero mockup's QR is decorative: it encodes a sentence, never a payment request.
+  let heroQr: string | null = null;
+  const home = async (extra: { sku?: string; reply?: string; error?: string } = {}) => {
+    heroQr ??= await qrSvg("Chupke: gift cards, bought quietly. This QR is an illustration, not a payment request.");
+    const last = store.kvGet("last_tick_at");
+    const age = last ? Math.round((Date.now() - Number(last.v)) / 1000) : null;
+    return homePage({ products, ...extra, heroQr, stats: store.publicStats(), shop: { online: age !== null && age < 90, lastTickAgeSec: age } });
+  };
   const shopUa = () => cfg.SHOP_UA ?? store.kvGet("shop_ua")?.v ?? null;
   const app = new Hono();
 
@@ -94,15 +109,15 @@ export function createApp(store: Store, cfg: WebConfig) {
     c.header("Cache-Control", "no-store");
   });
 
-  app.get("/", (c) => c.html(homePage({ products })));
+  app.get("/", async (c) => c.html(await home()));
 
   app.post("/orders", async (c) => {
     const form = await c.req.parseBody();
     const sku = typeof form.sku === "string" ? form.sku : "";
     const reply = typeof form.reply === "string" ? form.reply : "";
-    if (!shopUa()) return c.html(homePage({ products, sku, reply, error: "The shop wallet isn't ready yet. Try again in a minute." }), 503);
+    if (!shopUa()) return c.html(await home({ sku, reply, error: "The shop wallet isn't ready yet. Try again in a minute." }), 503);
     const r = createOrder(store, allowlist, { sku, replyUa: reply }, { demoZatPerUsd: cfg.DEMO_ZAT_PER_USD, orderTtlMin: cfg.ORDER_TTL_MIN, now: Date.now() });
-    if (!r.ok) return c.html(homePage({ products, sku, reply, error: r.message }), 400);
+    if (!r.ok) return c.html(await home({ sku, reply, error: r.message }), 400);
     // This order's own address, if the worker has derived spares; otherwise it shows the shop UA.
     const own = store.claimPoolAddress(r.order.id, shopUa()!, Date.now());
     store.addEvent(
