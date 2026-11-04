@@ -16,10 +16,14 @@ import {
 
 const Money = z.union([z.number(), z.string()]);
 
-export const InvoiceOrderSchema = z.looseObject({
-  id: z.string(),
-  status: z.string().optional(),
-});
+export const InvoiceOrderSchema = z
+  .looseObject({
+    id: z.string(),
+    status: z.string().optional(),
+  })
+  // Live GET /invoices/{id} embeds each order's redemption_info. Drop it at parse time: codes are
+  // fetched only through getOrder at send time and never ride on invoice objects (invariant I6).
+  .transform(({ redemption_info: _dropped, ...rest }) => rest);
 
 export const InvoiceSchema = z.looseObject({
   id: z.string(),

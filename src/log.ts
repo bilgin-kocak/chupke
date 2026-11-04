@@ -29,7 +29,11 @@ const SECRET_KEYS = [
   "ua",
 ] as const;
 
-export const REDACT_PATHS: string[] = SECRET_KEYS.flatMap((k) => [k, `*.${k}`, `*.*.${k}`]);
+export const REDACT_PATHS: string[] = [
+  ...SECRET_KEYS.flatMap((k) => [k, `*.${k}`, `*.*.${k}`]),
+  // invoice.orders[i].redemption_info sits three levels down
+  "*.*.*.redemption_info",
+];
 
 /**
  * Defense in depth for free-form strings: unified/sapling addresses and viewing keys are

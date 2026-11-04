@@ -79,6 +79,15 @@ describe("BitrefillClient", () => {
     expect(f.calls).toHaveLength(1);
   });
 
+  it("drops redemption_info that live invoices embed in their orders", async () => {
+    const body = invoice("all_delivered", "complete", [["o1", "delivered"]]);
+    (body.orders[0] as Record<string, unknown>).redemption_info = { code: "SECRET-CODE-1234", other: "x" };
+    const f = fakeFetch([{ status: 200, body: { data: body } }]);
+    const inv = await client(f.impl).getInvoice("inv_1");
+    expect(inv.orders[0]!.status).toBe("delivered");
+    expect(JSON.stringify(inv)).not.toContain("SECRET-CODE-1234");
+  });
+
   it("classifies failed invoices and orders", () => {
     expect(invoiceFailed({ ...invoice("denied", "unpaid", []) })).toBe(true);
     expect(invoiceFailed({ ...invoice("complete", "paid", [["o1", "failed"]]) })).toBe(true);
