@@ -1,12 +1,20 @@
-# docker compose up --build
+# docker compose pull && docker compose up -d     # prebuilt image from CI (ghcr.io)
+# docker compose up -d --build                     # or build here (first build compiles zingo-cli, ~5–15 min)
 #
 # Two processes, one image. The worker holds the wallets and the Bitrefill key and is not exposed.
 # The web is public, holds no secrets, and shares only the SQLite volume (never the wallets volume).
-# Put worker secrets in .env (see .env.example). On first start the worker restores the shop wallet
+# Put worker secrets in .env (see docs/DEPLOY.md). On first start the worker restores the shop wallet
 # from ZINGO_SEED + WALLET_BIRTHDAY; remove ZINGO_SEED from .env afterwards.
+#
+# Public URL: add --profile tls (Caddy, automatic HTTPS for DOMAIN) or --profile tunnel (Cloudflare
+# quick tunnel, prints a https://….trycloudflare.com URL in `docker compose logs tunnel`).
+x-image: &image
+  image: ${CHUPKE_IMAGE:-ghcr.io/bilgin-kocak/chupke:latest}
+  build: .
+
 services:
   worker:
-    build: .
+    <<: *image
     command: ["node_modules/.bin/tsx", "src/worker.ts"]
     env_file: .env
     environment:
@@ -21,7 +29,7 @@ services:
     stop_grace_period: 2m   # let an in-flight tick (and wallet send) finish
 
   web:
-    build: .
+    <<: *image
     command: ["node_modules/.bin/tsx", "src/web/server.ts"]
     # Only public settings: no env_file, so the web never sees worker secrets.
     environment:
@@ -43,6 +51,24 @@ services:
       - "${WEB_PORT:-8080}:8080"
     restart: unless-stopped
 
+  caddy:
+    profiles: ["tls"]
+    image: caddy:2
+    command: ["caddy", "reverse-proxy", "--from", "${DOMAIN:-localhost}", "--to", "web:8080"]
+    ports: ["80:80", "443:443"]
+    volumes:
+      - caddy-data:/data
+    depends_on: [web]
+    restart: unless-stopped
+
+  tunnel:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    command: ["tunnel", "--no-autoupdate", "--url", "http://web:8080"]
+    depends_on: [web]
+    restart: unless-stopped
+
 volumes:
   chupke-db:
   chupke-wallets:
+  caddy-data:

@@ -4,7 +4,13 @@
 > no account, no email, automatic refund if anything fails, never charged twice.**
 
 *Chupke* (चुपके) is Hindi for "quietly". It was built in one day for the Free Society Hack (Zcash × Bitrefill), Mumbai,
-4 Nov 2026, on Zcash testnet (NU7) and Bitrefill REST v2.
+4 Nov 2026, on Zcash testnet (NU7) and Bitrefill REST v2 plus the Bitrefill MCP.
+
+[![ci](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml/badge.svg?branch=claude/blissful-hamilton-amf64f)](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml)
+
+| Shop | Order, delivered | Order, refunded | Operator dashboard |
+| --- | --- | --- | --- |
+| <img src="docs/img/home.png" width="190" alt="Shop page"> | <img src="docs/img/order-sent.png" width="190" alt="Order page after delivery (QR and memo blurred)"> | <img src="docs/img/order-refunded.png" width="190" alt="Order page after an automatic refund (QR and memo blurred)"> | <img src="docs/img/dashboard.png" width="300" alt="Dashboard with addresses masked"> |
 
 | Track | What Chupke contributes |
 | --- | --- |
@@ -65,8 +71,10 @@ cp .env.example .env   # then fill in BITREFILL_API_KEY, ZINGO_SEED, WALLET_BIRT
 docker compose up --build
 ```
 
-- The first build compiles zingo-cli from a pinned zingolib commit, which takes about 5–15 minutes. CI also publishes
-  the image as `ghcr.io/bilgin-kocak/chupke`.
+- The first build compiles zingo-cli from a pinned zingolib commit, which takes about 5–15 minutes. To skip the
+  compile, use the image CI publishes: `docker compose pull && docker compose up -d`.
+- For a public URL, add `--profile tls` (Caddy, automatic HTTPS for `DOMAIN`) or `--profile tunnel` (a Cloudflare
+  quick tunnel). [docs/DEPLOY.md](docs/DEPLOY.md) has the full steps.
 - The web listens on :8080. The worker restores the shop wallet from `ZINGO_SEED` on first start; remove the seed from
   `.env` afterwards. Set `WALLET_MODE=split` to watch with a view-only inbox.
 - `GET /dashboard` uses basic auth (`chupke` / `DASHBOARD_PASSWORD`).
@@ -91,9 +99,9 @@ These are all real transactions. The full list is in [docs/EVIDENCE.md](docs/EVI
 | refund: duplicate payment | YMXHFE23J6 | [`34f0a31a…92d8`](https://testnet.zcashexplorer.app/transactions/34f0a31ac141357661471ddc9111bcedf2cdd076b50e59792f0b05dcad1a92d8) |
 | refund: quote expired | CVTJ3622GM | [`4e45c0c2…13cb`](https://testnet.zcashexplorer.app/transactions/4e45c0c2a676c5e516ba21352d2ac08a90c2a206c3efdec2330faa75488413cb) |
 | split-mode delivery (view-only inbox watched, outbox sent) | 3J5T3XDWPH | [`6b8d1f3f…5f7d`](https://testnet.zcashexplorer.app/transactions/6b8d1f3f8ccf9990040d7ae18ed6a9daf6e41e6bd6b1764ab57f674c5f555f7d) |
-| real Bitrefill purchase | – | *pending: needs event credits and a go-ahead* |
+| real Bitrefill purchase (Google Play India ₹100, $1.14) | – | *approved and allowlisted; waiting for event credits on the shop's Bitrefill balance* |
 
-**Demo video:** *to be added.* **Public URL:** *to be added.*
+**Demo video:** *to be added* (script: [docs/DEMO.md](docs/DEMO.md)). **Public URL:** *to be added* ([docs/DEPLOY.md](docs/DEPLOY.md)).
 
 ## Technology and design decisions
 
