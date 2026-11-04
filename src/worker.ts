@@ -88,6 +88,7 @@ log.info(
   {
     ingestFromHeight,
     walletMode: cfg.WALLET_MODE,
+    zingoBuild: process.env.CHUPKE_ZINGO_BUILD ?? "local",
     tickMs: cfg.TICK_MS,
     allowReal: cfg.ALLOW_REAL_PURCHASES,
     paused: cfg.PAUSE_PURCHASES,

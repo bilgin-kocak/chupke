@@ -49,3 +49,32 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  docker-nym:
+    # The same image with upstream's Nym build of zingo-cli (sends over the mixnet) and nym-proxy.
+    # This proves the mixnet variant compiles from the pinned commit; it is not run in the demo,
+    # whose sandbox can't reach the mixnet (docs/WALLET.md).
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: ZINGO_BUILD=nym
+          tags: |
+            ghcr.io/${{ github.repository }}:nym
+            ghcr.io/${{ github.repository }}:nym-${{ github.sha }}
+          cache-from: type=gha,scope=nym
+          cache-to: type=gha,mode=max,scope=nym
+      - name: The Nym build has both binaries
+        run: |
+          docker run --rm --entrypoint sh ghcr.io/${{ github.repository }}:nym-${{ github.sha }} -c \
+            'bin/zingo-cli --version && test -x bin/nym-proxy && echo "nym-proxy present"'

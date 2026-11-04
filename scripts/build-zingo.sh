@@ -4,7 +4,11 @@
 # Why these flags (details in docs/WALLET.md):
 # - zingo-cli 0.5.0's default build routes every send over the Nym mixnet and fails closed.
 #   ZINGO_BUILD=nakednet (default) builds without Nym plus `nakednet-test-mode`, so the
-#   wallet talks to lightwalletd directly. ZINGO_BUILD=nym builds the upstream default.
+#   wallet talks to lightwalletd directly. ZINGO_BUILD=nym builds the upstream default and
+#   also nym-proxy, the mixnet SOCKS5 child that zingo-cli spawns when it goes online; it is
+#   installed beside zingo-cli, where zingo-cli looks for it first.
+# - ZINGO_BIN_DIR (default ./bin) and CARGO_TARGET_DIR let a second flavor build side by side
+#   without replacing the binary a running worker uses.
 # - patches/zingo-netutils-extra-ca.patch adds an optional extra TLS trust root read from
 #   ZINGO_EXTRA_CA_FILE (for egress proxies that re-terminate TLS). Unset = upstream behavior.
 set -euo pipefail
@@ -14,6 +18,8 @@ ZINGOLIB_REPO="${ZINGOLIB_REPO:-https://github.com/zingolabs/zingolib}"
 ZINGOLIB_REV="${ZINGOLIB_REV:-3f2529e2284d07925abd41b0fa0f1d40143f9241}"
 ZINGOLIB_DIR="${ZINGOLIB_DIR:-$ROOT/../zingolabs/zingolib}"
 ZINGO_BUILD="${ZINGO_BUILD:-nakednet}"
+BIN_DIR="${ZINGO_BIN_DIR:-$ROOT/bin}"
+TARGET_DIR="${CARGO_TARGET_DIR:-$ZINGOLIB_DIR/target}"
 PATCH="$ROOT/patches/zingo-netutils-extra-ca.patch"
 
 if [ ! -d "$ZINGOLIB_DIR/.git" ]; then
@@ -60,7 +66,16 @@ esac
 echo "build-zingo: cargo build ($ZINGO_BUILD) at $ZINGOLIB_REV"
 cargo build --release --locked -p zingo-cli "${FEATURE_ARGS[@]}"
 
-mkdir -p "$ROOT/bin"
-install -m 0755 target/release/zingo-cli "$ROOT/bin/zingo-cli"
-"$ROOT/bin/zingo-cli" --version
-echo "build-zingo: installed $ROOT/bin/zingo-cli"
+mkdir -p "$BIN_DIR"
+install -m 0755 "$TARGET_DIR/release/zingo-cli" "$BIN_DIR/zingo-cli"
+if [ "$ZINGO_BUILD" = nym ]; then
+  # A plain `cargo build -p zingo-cli` never produces nym-proxy (it sits behind zingo-netutils'
+  # nym feature); upstream's `makers bundle-nym-proxy` runs exactly this build.
+  cargo build --release --locked -p zingo-netutils --features nym --bin nym-proxy
+  install -m 0755 "$TARGET_DIR/release/nym-proxy" "$BIN_DIR/nym-proxy"
+  echo "build-zingo: installed $BIN_DIR/nym-proxy"
+else
+  rm -f "$BIN_DIR/nym-proxy" # a stale proxy from an earlier nym build would not be used, but don't ship it
+fi
+"$BIN_DIR/zingo-cli" --version
+echo "build-zingo: installed $BIN_DIR/zingo-cli ($ZINGO_BUILD)"
