@@ -1,0 +1,95 @@
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+import Database from "better-sqlite3";
+
+/**
+ * One SQLite file in WAL mode, shared by web (orders, reads) and worker (everything else).
+ * Timestamps are unix milliseconds. Columns follow SPEC §4; extras are marked.
+ */
+export const SCHEMA = `
+CREATE TABLE IF NOT EXISTS orders (
+  id            TEXT PRIMARY KEY,
+  sku           TEXT NOT NULL,
+  kind          TEXT NOT NULL,              -- extra: test | real (allowlist snapshot)
+  product_id    TEXT NOT NULL,
+  package_id    TEXT,
+  value         REAL,
+  value_usd     REAL NOT NULL,
+  label         TEXT NOT NULL,
+  price_zat     INTEGER NOT NULL,
+  reply_ua      TEXT,                       -- purged PURGE_AFTER_MIN after terminal (I7)
+  created_at    INTEGER NOT NULL,
+  expires_at    INTEGER NOT NULL,
+  status        TEXT NOT NULL,              -- awaiting_payment | fulfilling | delivered | refunded | expired | held
+  terminal_at   INTEGER,                    -- extra
+  updated_at    INTEGER NOT NULL            -- extra
+);
+
+CREATE TABLE IF NOT EXISTS payments (
+  key             TEXT PRIMARY KEY,         -- "<txid>:<pool>:<outputIndex>" (I1)
+  txid            TEXT NOT NULL,
+  pool            TEXT NOT NULL,            -- extra
+  output_index    INTEGER,                  -- extra
+  order_id        TEXT,
+  amount_zat      INTEGER NOT NULL,
+  memo_ok         INTEGER NOT NULL,
+  reply_ua        TEXT,                     -- from the PAID memo (I5)
+  first_seen_at   INTEGER NOT NULL,
+  mined_height    INTEGER,
+  confirmations   INTEGER NOT NULL DEFAULT 0,
+  state           TEXT NOT NULL,            -- seen | confirmed | accepted | refund_pending | refund_sending | refunded | held | ignored_dust
+  reason          TEXT,
+  refund_txid     TEXT,
+  attempts        INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at INTEGER NOT NULL DEFAULT 0,
+  send_started_at INTEGER,                  -- extra: set (committed) right before a refund send
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS payments_order ON payments(order_id);
+CREATE INDEX IF NOT EXISTS payments_state ON payments(state);
+
+CREATE TABLE IF NOT EXISTS fulfillments (
+  order_id        TEXT PRIMARY KEY,         -- each order is bought at most once, ever (I2)
+  payment_key     TEXT NOT NULL UNIQUE,
+  state           TEXT NOT NULL,            -- claimed | invoice_created | paying | paid | delivered | delivery_sending | memo_sent | failed
+  invoice_id      TEXT,
+  br_order_ids    TEXT,                     -- JSON array
+  invoice_status  TEXT,
+  delivery_txid   TEXT,
+  error           TEXT,
+  attempts        INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at INTEGER NOT NULL DEFAULT 0,
+  created_at      INTEGER NOT NULL,         -- extra
+  spend_at        INTEGER,                  -- extra: set when "paying" is committed (daily cap)
+  send_started_at INTEGER,                  -- extra: set (committed) right before the delivery send
+  updated_at      INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  at          INTEGER NOT NULL,
+  order_id    TEXT,
+  payment_key TEXT,
+  type        TEXT NOT NULL,
+  detail      TEXT                           -- redacted: never codes, addresses, memos or keys
+);
+CREATE INDEX IF NOT EXISTS events_order ON events(order_id);
+
+CREATE TABLE IF NOT EXISTS kv (
+  k          TEXT PRIMARY KEY,
+  v          TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+`;
+
+export type DB = Database.Database;
+
+export function openDb(path: string): DB {
+  if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  const db = new Database(path);
+  if (path !== ":memory:") db.pragma("journal_mode = WAL");
+  db.pragma("busy_timeout = 5000");
+  db.pragma("synchronous = NORMAL");
+  db.exec(SCHEMA);
+  return db;
+}

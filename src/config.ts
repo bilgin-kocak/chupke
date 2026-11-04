@@ -31,6 +31,7 @@ export const SharedEnv = z.object({
   PURGE_AFTER_MIN: int(60),
   PAUSE_PURCHASES: bool("false"),
   ALLOWLIST_PATH: z.string().default("./config/allowlist.json"),
+  EXPLORER_TX_URL: z.string().url().default("https://testnet.zcashexplorer.app/transactions/"),
 });
 
 /** Worker only: the wallet, the Bitrefill key and the state machine. */
@@ -52,6 +53,13 @@ export const WorkerEnv = SharedEnv.extend({
   DELIVERY_AMOUNT_ZAT: int(1000),
   DUST_ZAT: int(20000),
   TICK_MS: int(10000),
+  /** Free test products count toward MAX_DAILY_USD only when true. */
+  DAILY_CAP_INCLUDES_TEST: bool("false"),
+  /** Wait this long for a possibly-broadcast send to appear in listSent before resending. */
+  RESEND_GUARD_SEC: int(180),
+  /** Ignore received outputs mined below this height (defaults to the chain tip at first start). */
+  INGEST_FROM_HEIGHT: z.coerce.number().int().positive().optional(),
+  BITREFILL_BALANCE_EVERY_SEC: int(300),
 });
 
 /** Web only. Must never see worker secrets. */
