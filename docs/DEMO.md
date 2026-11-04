@@ -43,8 +43,8 @@ Judges score "Works" against the pitch, so every clause gets something visible o
 8. **Privacy (10 s).** Point at "This payment address is used for this order only" under the QR, then show the
    *Who can see what* box. "Every order gets its own shop address. Reply addresses are deleted an hour after the order
    ends, and codes are never stored."
-9. **Close (10 s).** "The buyer's ZEC pays Chupke; Chupke pays Bitrefill from its own balance: event credits today,
-   batched ZEC to USDC in production. Built on Zcash testnet and Bitrefill REST v2 plus MCP."
+9. **Close (10 s).** "The buyer's ZEC pays Chupke; Chupke pays Bitrefill from its own balance: Bitrefill's free test
+   products today, batched ZEC to USDC in production. Built on Zcash testnet and Bitrefill REST v2 plus MCP."
 
 ## Don'ts
 

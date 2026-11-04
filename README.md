@@ -71,8 +71,9 @@ flowchart LR
    shop address. That's a fresh diversified address no other order gets, or the shop's main address if none is ready.
    The memo also has a copy button.
 3. The buyer pays from any testnet wallet.
-4. The worker sees the payment through a view-only inbox and waits for confirmation. It runs the guard (allowlist and
-   caps), buys on Bitrefill, then waits until every Bitrefill order says `delivered`.
+4. The worker sees the payment and waits for confirmation. In split mode, which the live app runs, a view-only inbox
+   made from the shop's viewing key does the watching. It runs the guard (allowlist and caps), buys on Bitrefill, then
+   waits until every Bitrefill order says `delivered`.
 5. The worker sends the code to the reply address as a shielded memo:
    `Chupke #<order> delivered` / label / `Code: …` / `PIN: …` / `Redeem: …`. The order page never shows it.
 6. On any failure the worker sends a shielded refund of the full amount. The memo carries the reason and a `ref <txid8>` tag.
