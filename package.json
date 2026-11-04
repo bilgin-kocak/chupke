@@ -15,6 +15,7 @@
     "worker": "NODE_USE_ENV_PROXY=1 NODE_OPTIONS=--disable-warning=UNDICI-EHPA tsx src/worker.ts",
     "buyer:pay": "tsx scripts/buyer-pay.ts",
     "buyer:inbox": "tsx scripts/buyer-inbox.ts",
+    "find-products": "NODE_USE_ENV_PROXY=1 NODE_OPTIONS=--disable-warning=UNDICI-EHPA tsx scripts/find-products.ts",
     "wallet:smoke": "tsx scripts/wallet-smoke.ts",
     "bitrefill:smoke": "NODE_USE_ENV_PROXY=1 NODE_OPTIONS=--disable-warning=UNDICI-EHPA tsx scripts/bitrefill-smoke.ts",
     "bitrefill:buy-once": "NODE_USE_ENV_PROXY=1 NODE_OPTIONS=--disable-warning=UNDICI-EHPA tsx scripts/bitrefill-buy-once.ts"
