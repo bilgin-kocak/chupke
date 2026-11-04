@@ -134,6 +134,16 @@ const MessagesOut = z.looseObject({
 const SendOut = z.looseObject({ txids: z.array(z.string().regex(/^[0-9a-f]{64}$/)).min(1) });
 const UfvkOut = z.looseObject({ ufvk: z.string(), birthday: z.number().int() });
 
+/**
+ * `balance` is not JSON: it prints "total_<pool>_balance: 100_000_000" lines (underscore digit
+ * separators) for ironwood, orchard, sapling and transparent. Returns the sum in zatoshis.
+ */
+export function parseBalanceTotal(text: string): number {
+  let total = 0;
+  for (const m of text.matchAll(/total_[a-z]+_balance:\s*([\d_]+)/g)) total += Number(m[1]!.replaceAll("_", ""));
+  return total;
+}
+
 /** "confirmed at block height 4581215" -> 4581215; mempool/transmitted/calculated -> null. */
 export function minedHeightFromStatus(status: string): number | null {
   const m = /^confirmed at block height (\d+)$/.exec(status.trim());
@@ -193,10 +203,7 @@ export class ZingoWallet implements ZcashWallet {
   async balance(): Promise<WalletBalance> {
     const spendable = SpendableOut.parse(extractJson(await this.run("spendable_balance", "offline", ["spendable_balance"])));
     const text = await this.run("balance", "offline", ["balance"]);
-    // `balance` prints a non-JSON list of "total_<pool>_balance: <zat>" lines.
-    let total = 0;
-    for (const m of text.matchAll(/total_[a-z]+_balance:\s*(\d+)/g)) total += Number(m[1]);
-    return { spendableZat: spendable.spendable_balance, totalZat: total };
+    return { spendableZat: spendable.spendable_balance, totalZat: parseBalanceTotal(text) };
   }
 
   async chainHeightFromWallet(): Promise<number> {
