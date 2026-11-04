@@ -1,0 +1,148 @@
+/**
+ * Chupke web: public and secret-free. It reads the allowlist and the public shop address, creates
+ * orders and shows status. It never sees the wallet seed, viewing keys, the Bitrefill key or any
+ * redemption code. No request logging (the server would otherwise record buyer IPs).
+ */
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { loadAllowlist, loadDotEnv, loadWebConfig, type WebConfig } from "../config.js";
+import { openDb } from "../db/schema.js";
+import { Store, type OrderRow } from "../db/store.js";
+import { reasonText } from "../engine/guard.js";
+import { isOrderId } from "../ids.js";
+import { createLogger } from "../log.js";
+import { createOrder, priceZat } from "../orders.js";
+import { buildPaymentMemo } from "../zcash/memo.js";
+import { buildPaymentUri, zatToZec } from "../zcash/zip321.js";
+import { qrSvg } from "./qr.js";
+import { homePage, notFoundPage, orderPage } from "./views.js";
+
+export type Stage = "waiting" | "seen" | "confirmed" | "buying" | "delivered" | "sent" | "refunding" | "refunded" | "expired" | "held";
+
+export interface PublicStatus {
+  id: string;
+  label: string;
+  priceZat: number;
+  priceTaz: string;
+  expiresAt: number;
+  stage: Stage;
+  reasonText: string | null;
+  deliveryTxid: string | null;
+  refundTxid: string | null;
+  explorer: string;
+}
+
+/** Status for the order page and /api/o/:id: no addresses, no memo, no code. */
+export function publicStatus(store: Store, order: OrderRow, cfg: Pick<WebConfig, "MIN_CONFIRMATIONS" | "EXPLORER_TX_URL">): PublicStatus {
+  const pays = store.paymentsForOrder(order.id);
+  const f = store.getFulfillment(order.id);
+  const outcomeRefund = pays.find((p) => ["refund_pending", "refund_sending", "refunded"].includes(p.state) && p.reason !== "duplicate_payment");
+  const held = pays.find((p) => p.state === "held");
+  let stage: Stage = "waiting";
+  if (pays.length > 0) stage = "seen";
+  if (pays.some((p) => p.state !== "seen" || p.confirmations >= cfg.MIN_CONFIRMATIONS)) stage = "confirmed";
+  if (f) {
+    if (["claimed", "invoice_created", "paying", "paid"].includes(f.state)) stage = "buying";
+    if (["delivered", "delivery_sending"].includes(f.state)) stage = "delivered";
+    if (f.state === "memo_sent") stage = "sent";
+  }
+  if (stage !== "sent" && outcomeRefund) stage = outcomeRefund.state === "refunded" ? "refunded" : "refunding";
+  else if (stage !== "sent" && f?.state === "failed") stage = "refunding";
+  else if (stage !== "sent" && held) stage = "held";
+  else if (stage === "waiting" && order.status === "expired") stage = "expired";
+  const reasonSource = outcomeRefund ?? held;
+  return {
+    id: order.id,
+    label: order.label,
+    priceZat: order.price_zat,
+    priceTaz: zatToZec(order.price_zat),
+    expiresAt: order.expires_at,
+    stage,
+    reasonText: reasonSource ? reasonText(reasonSource.reason) : null,
+    deliveryTxid: f?.delivery_txid ?? null,
+    refundTxid: outcomeRefund?.refund_txid ?? null,
+    explorer: cfg.EXPLORER_TX_URL,
+  };
+}
+
+export function createApp(store: Store, cfg: WebConfig) {
+  const allowlist = loadAllowlist(cfg.ALLOWLIST_PATH);
+  const products = allowlist.map((e) => ({ sku: e.sku, label: e.label, valueUsd: e.value_usd, priceTaz: zatToZec(priceZat(e.value_usd, cfg.DEMO_ZAT_PER_USD)) }));
+  const shopUa = () => cfg.SHOP_UA ?? store.kvGet("shop_ua")?.v ?? null;
+  const app = new Hono();
+
+  app.use("*", async (c, next) => {
+    await next();
+    c.header(
+      "Content-Security-Policy",
+      "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+    );
+    c.header("Referrer-Policy", "no-referrer");
+    c.header("X-Content-Type-Options", "nosniff");
+    c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    c.header("Cache-Control", "no-store");
+  });
+
+  app.get("/", (c) => c.html(homePage({ products })));
+
+  app.post("/orders", async (c) => {
+    const form = await c.req.parseBody();
+    const sku = typeof form.sku === "string" ? form.sku : "";
+    const reply = typeof form.reply === "string" ? form.reply : "";
+    if (!shopUa()) return c.html(homePage({ products, sku, reply, error: "The shop wallet isn't ready yet. Try again in a minute." }), 503);
+    const r = createOrder(store, allowlist, { sku, replyUa: reply }, { demoZatPerUsd: cfg.DEMO_ZAT_PER_USD, orderTtlMin: cfg.ORDER_TTL_MIN, now: Date.now() });
+    if (!r.ok) return c.html(homePage({ products, sku, reply, error: r.message }), 400);
+    store.addEvent(Date.now(), "order_created", { orderId: r.order.id }, `${r.order.sku}, ${r.order.price_zat} zat`);
+    return c.redirect(`/o/${r.order.id}`, 303);
+  });
+
+  app.get("/o/:id", async (c) => {
+    const id = c.req.param("id");
+    const order = isOrderId(id) ? store.getOrder(id) : undefined;
+    if (!order) return c.html(notFoundPage(), 404);
+    const ua = shopUa();
+    const memo = order.reply_ua ? buildPaymentMemo(order.id, order.reply_ua) : null;
+    const uri = memo && ua ? buildPaymentUri({ address: ua, amountZat: order.price_zat, memo, message: `Chupke order ${order.id}` }) : null;
+    const status = publicStatus(store, order, cfg);
+    return c.html(
+      orderPage({
+        id: order.id,
+        label: order.label,
+        priceTaz: zatToZec(order.price_zat),
+        expiresAt: order.expires_at,
+        uri,
+        memo,
+        qr: uri ? await qrSvg(uri) : null,
+        statusJson: JSON.stringify(status).replace(/</g, "\\u003c"),
+      }),
+    );
+  });
+
+  app.get("/api/o/:id", (c) => {
+    const id = c.req.param("id");
+    const order = isOrderId(id) ? store.getOrder(id) : undefined;
+    if (!order) return c.json({ error: "not_found" }, 404);
+    return c.json(publicStatus(store, order, cfg));
+  });
+
+  app.get("/healthz", (c) => {
+    const last = store.kvGet("last_tick_at");
+    const tickAgeSec = last ? Math.round((Date.now() - Number(last.v)) / 1000) : null;
+    return c.json({ ok: true, shopReady: shopUa() !== null, lastTickAt: last ? Number(last.v) : null, tickAgeSec });
+  });
+
+  app.notFound((c) => c.html(notFoundPage(), 404));
+  return app;
+}
+
+const isMain = process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
+if (isMain) {
+  loadDotEnv();
+  const cfg = loadWebConfig();
+  const log = createLogger({ name: "web" });
+  const store = new Store(openDb(cfg.DATABASE_PATH));
+  const app = createApp(store, cfg);
+  serve({ fetch: app.fetch, port: cfg.PORT }, (info) => log.info({ port: info.port }, "web listening"));
+}
