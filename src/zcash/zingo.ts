@@ -315,7 +315,7 @@ export class ZingoWallet implements ZcashWallet {
       child.on("close", (code) => {
         clearTimeout(timer);
         const ms = Date.now() - t0;
-        this.log.info({ cmd: name, exitCode: code, ms, timedOut }, "zingo-cli");
+        this.log[code === 0 && !timedOut ? "debug" : "warn"]({ cmd: name, exitCode: code, ms, timedOut }, "zingo-cli");
         if (timedOut) return reject(new WalletCommandError(name, code, `zingo-cli ${name} timed out after ${timeoutMs} ms`));
         if (code !== 0) {
           // Keep only the "Error:" lines, scrubbed of addresses and keys, and short.
