@@ -81,6 +81,8 @@ docker compose up --build
 - The web listens on :8080. The worker restores the shop wallet from `ZINGO_SEED` on first start; remove the seed from
   `.env` afterwards. Set `WALLET_MODE=split` to watch with a view-only inbox.
 - `GET /dashboard` uses basic auth (`chupke` / `DASHBOARD_PASSWORD`).
+- `CHUPKE_IMAGE=ghcr.io/bilgin-kocak/chupke:nym` in `.env` selects the Nym build, which sends transactions over the
+  mixnet (built in CI, not yet run against the mixnet; [docs/DEPLOY.md](docs/DEPLOY.md), step 6).
 - Without Docker: `npm ci`, `scripts/build-zingo.sh`, `npm run worker`, then `npm run web`.
 
 The demo payer can be any testnet wallet, or the CLI buyer wallet: `npm run buyer:pay -- --order <id>` and
@@ -125,7 +127,10 @@ balance is 0 and none was needed for the demo. The real-product path is built an
 - **Zcash via zingo-cli**, behind a `ZcashWallet` adapter. Calls are one-shot and serialized per wallet directory
   (an in-process queue plus a cross-process lock file), with a 120 s timeout and zod-parsed stdout. Logs carry only the
   command, exit code and duration. Findings are in [docs/WALLET.md](docs/WALLET.md):
-  - zingo-cli 0.5.0 forces every send over the Nym mixnet in its default build, so Chupke builds with `nakednet-test-mode`.
+  - zingo-cli 0.5.0 forces every send over the Nym mixnet in its default build, so the demo image builds with
+    `nakednet-test-mode`. CI also publishes `ghcr.io/bilgin-kocak/chupke:nym`: the upstream mixnet build plus
+    `nym-proxy` ([docs/DEPLOY.md](docs/DEPLOY.md), step 6). It compiles, but it hasn't been run here, because this
+    sandbox can't reach the mixnet.
   - `--waitsync` only works for wallets created with it.
   - Errors at the proposal stage are recognized and retried quickly.
   - A one-function patch adds an opt-in extra TLS root for egress proxies that re-terminate TLS.
@@ -185,7 +190,8 @@ balance is 0 and none was needed for the demo. The real-product path is built an
 - **A Bitrefill partner/reseller pilot on mainnet**, with batched ZEC → USDC balance top-ups
   ([Resell Bitrefill products](https://docs.bitrefill.com/docs/integration-flow.md),
   [fund the account balance](https://docs.bitrefill.com/docs/account-deposits.md)).
-- **Nym for wallet traffic**: zingo-cli's default mixnet build, run on a host where the mixnet is reachable
+- **Nym for wallet traffic**: run the `:nym` image, which CI already builds, on a host where the mixnet is reachable,
+  and measure what a mixnet start on every online zingo-cli call costs each tick
   ([zingolib](https://github.com/zingolabs/zingolib)).
 - **Match payments by receiving address as well as memo**, once zingo-cli reports which address a note was paid to
   (zingolib's note summaries carry a TODO for the address index). A payment that lost its memo could then still be

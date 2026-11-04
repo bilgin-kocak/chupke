@@ -259,6 +259,7 @@ M3 (-> 18:30):
   1. Split wallet.
   2. MCP catalog script: Bitrefill's hosted MCP search-products/get-product-details proposes allowlist entries that I approve (combining surfaces scores higher).
   3. Nym.
+     > BUILT, NOT RUN 2026-11-04. `ZINGO_BUILD=nym` builds upstream's default zingo-cli plus nym-proxy (locally 4 + 6 min, no warnings), and CI publishes `ghcr.io/bilgin-kocak/chupke:nym`. Offline it reads the same wallet files as the nakednet build. Online, sends and price fetches go over the mixnet and sync stays direct; nothing falls back to a direct broadcast. This sandbox can't reach the mixnet: without nym-proxy the build refuses to go online at once ("Mixnet Mode is required for a connected session"), and with it zingo-cli restarted the proxy three times and was still waiting after 5 minutes. The adapter treats the refusal as a send that never ran (sendNeverRan). Not run against the mixnet.
   4. Overpayment refund.
      > DONE 2026-11-04. After a delivery, payment − price is returned when it is at least OVERPAY_REFUND_MIN_ZAT (20,000 zat); a smaller excess is kept. It is returned to the paid memo's reply address with the memo "Chupke #<order> overpayment: X TAZ returned. / You paid P TAZ; the price was Q TAZ. / ref <txid8>". It has its own committed state and a listSent resume check, and it is held for review if it can't look. Live: order VTQ8KA58D0 paid 0.015 for 0.01 TAZ; delivery fde411c8…, then 0.005 TAZ returned in 287e7afd27e258ed7e570a31d74d9cadd753a49a810289e886eda4a73729b532.
   5. Per-order diversified addresses.

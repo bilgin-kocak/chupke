@@ -224,4 +224,8 @@ pointed elsewhere, so the running worker's `bin/zingo-cli` was untouched). CI bu
   `Error: Mixnet Mode is required for a connected session: Mixnet Mode could not start.` The adapter now treats this
   error on a send as "never broadcast" (`sendNeverRan`), because zingo-cli raises it while starting the session, before
   its pre-send sync. The worker then retries quickly instead of waiting out the resend guard.
+- **With `nym-proxy` beside it, but no mixnet,** zingo-cli printed nothing for 5 minutes. It started `nym-proxy`
+  three times (each exited) and was still waiting when the test's `timeout` stopped it. Nothing fell back to a direct
+  connection. On a worker the adapter's 120 s timeout would end each such call. A timed-out send counts as possibly
+  broadcast, so the worker checks its sent memos after the resend guard before trying again.
 

@@ -26,7 +26,7 @@ This page answers four questions about what Chupke reveals. Naming a gap costs n
 
 | Who | Sees |
 | --- | --- |
-| **Light-wallet server** (`testnet.zec.rocks`) | The worker's IP address, when it syncs, and which blocks and transactions it downloads. The demo build uses zingo-cli's `nakednet-test-mode`, so there is **no Nym**, and zingo-cli itself warns that "the indexer sees this machine's IP address". |
+| **Light-wallet server** (`testnet.zec.rocks`) | The worker's IP address, when it syncs, and which blocks and transactions it downloads. The demo build uses zingo-cli's `nakednet-test-mode`, so there is **no Nym**, and zingo-cli itself warns that "the indexer sees this machine's IP address". The `:nym` image (built, not yet run against the mixnet) sends every transaction over Nym; its sync still connects directly. |
 | **The web server** | The buyer's IP address and page visits (Chupke itself logs no requests, but a hosting provider or proxy might), and the reply address, kept so the order page can show the memo. It is deleted 60 minutes after the order ends. |
 | **The operator** (whoever runs the worker) | The order, the amount, the product, and the reply address until it is purged. The dashboard masks addresses to 8 characters, but the database holds the full address until the purge. |
 | **Bitrefill** | That the shop bought product X at time T from its own balance. It never sees the buyer's wallet, address, IP or payment. |
@@ -48,8 +48,10 @@ This page answers four questions about what Chupke reveals. Naming a gap costs n
 
 ## 4. What we'd fix next
 
-1. **Nym for wallet traffic.** Use zingo-cli's default mixnet build, which routes every transmission over Nym, on a host
-   where the mixnet is reachable.
+1. **Nym for wallet traffic.** CI builds a `:nym` image with zingo-cli's default mixnet build, which sends every
+   transaction over Nym and fails closed instead of going direct. The next step is running it on a host where the
+   mixnet is reachable. Its sync still connects directly, so the light-wallet server would still see the worker's IP
+   and when it syncs, but not which transactions it sends.
 2. **The split view-only inbox everywhere.** `WALLET_MODE=split` is built and tested: a UFVK-only inbox watches for
    payments and the spending wallet only sends. The next step is running them on separate machines. Until then, the UFVK
    passes through zingo-cli's command line while the inbox is being created.
