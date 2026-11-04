@@ -8,6 +8,8 @@
 
 [![ci](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml)
 
+**[▶ Watch the demo (1:31)](https://youtu.be/UON-xeeoFoY)** · **[Try it live](https://chupke-production.up.railway.app)** (Zcash testnet)
+
 <img src="docs/img/home.png" alt="Chupke landing page: gift cards, bought quietly, with a phone showing an order QR and a shielded memo carrying the code">
 
 | Order, waiting (its own address) | Order, delivered | Order, refunded | Operator dashboard | Phone |
@@ -121,7 +123,7 @@ balance is 0 and none was needed for the demo. The real-product path is built an
 - Ordering it is refused and refunded automatically ("Shop isn't selling this yet") while `ALLOW_REAL_PURCHASES=false`.
 - Enabling it takes Bitrefill balance and one setting.
 
-**Demo video:** *to be added* (script: [docs/DEMO.md](docs/DEMO.md)). **Public URL:** https://chupke-production.up.railway.app (testnet, on Railway; [docs/DEPLOY.md](docs/DEPLOY.md)).
+**Demo video:** [youtu.be/UON-xeeoFoY](https://youtu.be/UON-xeeoFoY) (1:31). A real order on the live app, built in [video/](video/README.md). **Public URL:** https://chupke-production.up.railway.app (testnet, on Railway; [docs/DEPLOY.md](docs/DEPLOY.md)).
 
 ## Technology and design decisions
 
@@ -211,5 +213,6 @@ balance is 0 and none was needed for the demo. The real-product path is built an
 `src/` holds config, logging, ids, `db/`, `zcash/` (wallet interface, zingo adapter, memo, ZIP 321, address checks),
 `bitrefill/` (client, limiter, redemption), `engine/` (guard, route, fulfill, refund, tick), `web/` (server, views, theme, QR),
 and `worker.ts`. `scripts/` holds the zingo-cli build, smoke tests, buy-once, product search (`find-products`), the MCP catalog, buyer pay/inbox, the refund suite,
-the rescan, inbox creation and the evidence table. `test/` holds the vitest suite. `docs/` holds WALLET.md (Zcash tooling),
+the rescan, inbox creation and the evidence table. `test/` holds the vitest suite. `video/` holds the demo video's source
+(Remotion scenes, ElevenLabs voice, a synthesized soundtrack and live captures; see video/README.md). `docs/` holds WALLET.md (Zcash tooling),
 NOTES.md (runs and decisions) and EVIDENCE.md.

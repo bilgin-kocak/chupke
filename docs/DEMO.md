@@ -1,5 +1,7 @@
 # Demo video script (2–3 minutes)
 
+> The published video is at https://youtu.be/UON-xeeoFoY (1:31). It follows a tighter cut of this script and is built from [video/](../video/README.md).
+
 Judges score "Works" against the pitch, so every clause gets something visible on screen:
 
 | Pitch clause | Shown by |
