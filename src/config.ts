@@ -73,12 +73,22 @@ export type SharedConfig = z.infer<typeof SharedEnv>;
 export type WorkerConfig = z.infer<typeof WorkerEnv>;
 export type WebConfig = z.infer<typeof WebEnv>;
 
+/**
+ * An empty variable means "not set", so its default applies. docker compose passes `${VAR:-}` as "",
+ * and a copied .env.example has blank lines like `WALLET_BIRTHDAY=`; both must not fail validation.
+ */
+export function dropEmpty(env: NodeJS.ProcessEnv): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(env)) if (v !== undefined && v.trim() !== "") out[k] = v;
+  return out;
+}
+
 export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
-  return WorkerEnv.parse(env);
+  return WorkerEnv.parse(dropEmpty(env));
 }
 
 export function loadWebConfig(env: NodeJS.ProcessEnv = process.env): WebConfig {
-  return WebEnv.parse(env);
+  return WebEnv.parse(dropEmpty(env));
 }
 
 export const AllowlistEntry = z.object({
