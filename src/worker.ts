@@ -61,11 +61,20 @@ const engine = new Engine({
   },
 });
 
-for (const w of [outbox, inbox]) {
-  if (w && !w.walletExists()) {
-    log.fatal({ dir: w.dataDir }, "wallet missing; create it first (docs/WALLET.md, scripts/init-inbox.ts for split mode)");
+// First start on a fresh machine: restore the shop wallet from ZINGO_SEED + WALLET_BIRTHDAY, and in
+// split mode derive the view-only inbox from its UFVK. The seed and UFVK are never logged.
+if (!outbox.walletExists()) {
+  if (!cfg.ZINGO_SEED || !cfg.WALLET_BIRTHDAY) {
+    log.fatal({ dir: outbox.dataDir }, "no shop wallet: set ZINGO_SEED and WALLET_BIRTHDAY to restore it (docs/WALLET.md)");
     process.exit(1);
   }
+  log.info({ dir: outbox.dataDir, birthday: cfg.WALLET_BIRTHDAY }, "restoring the shop wallet from ZINGO_SEED (this syncs from the birthday)");
+  await outbox.initWallet({ seed: cfg.ZINGO_SEED, birthday: cfg.WALLET_BIRTHDAY });
+}
+if (inbox && !inbox.walletExists()) {
+  log.info({ dir: inbox.dataDir }, "creating the view-only inbox from the shop UFVK");
+  const { ufvk, birthday } = await outbox.exportUfvk();
+  await inbox.initWallet({ viewkey: ufvk, birthday });
 }
 
 const { shopUa, ingestFromHeight } = await engine.init();

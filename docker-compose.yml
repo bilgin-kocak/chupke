@@ -1,0 +1,48 @@
+# docker compose up --build
+#
+# Two processes, one image. The worker holds the wallets and the Bitrefill key and is not exposed.
+# The web is public, holds no secrets, and shares only the SQLite volume (never the wallets volume).
+# Put worker secrets in .env (see .env.example). On first start the worker restores the shop wallet
+# from ZINGO_SEED + WALLET_BIRTHDAY; remove ZINGO_SEED from .env afterwards.
+services:
+  worker:
+    build: .
+    command: ["node_modules/.bin/tsx", "src/worker.ts"]
+    env_file: .env
+    environment:
+      DATABASE_PATH: /app/db/chupke.db
+      SHOP_WALLET_DIR: /app/wallets/shop
+      INBOX_WALLET_DIR: /app/wallets/inbox
+      ZINGO_CLI_PATH: /app/bin/zingo-cli
+    volumes:
+      - chupke-db:/app/db
+      - chupke-wallets:/app/wallets
+    restart: unless-stopped
+    stop_grace_period: 2m   # let an in-flight tick (and wallet send) finish
+
+  web:
+    build: .
+    command: ["node_modules/.bin/tsx", "src/web/server.ts"]
+    # Only public settings: no env_file, so the web never sees worker secrets.
+    environment:
+      DATABASE_PATH: /app/db/chupke.db
+      PORT: "8080"
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+      SHOP_UA: ${SHOP_UA:-}
+      DEMO_ZAT_PER_USD: ${DEMO_ZAT_PER_USD:-100000}
+      MAX_ORDER_USD: ${MAX_ORDER_USD:-10}
+      MAX_DAILY_USD: ${MAX_DAILY_USD:-30}
+      MIN_CONFIRMATIONS: ${MIN_CONFIRMATIONS:-1}
+      ORDER_TTL_MIN: ${ORDER_TTL_MIN:-20}
+      EXPLORER_TX_URL: ${EXPLORER_TX_URL:-https://testnet.zcashexplorer.app/transactions/}
+      DAILY_CAP_INCLUDES_TEST: ${DAILY_CAP_INCLUDES_TEST:-false}
+    volumes:
+      - chupke-db:/app/db
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  chupke-db:
+  chupke-wallets:
