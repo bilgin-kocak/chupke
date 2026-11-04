@@ -53,6 +53,8 @@ export const WorkerEnv = SharedEnv.extend({
   WALLET_BIRTHDAY: z.coerce.number().int().positive().optional(),
   LIGHTWALLETD_URL: z.string().url().default("https://testnet.zec.rocks:443"),
   DELIVERY_AMOUNT_ZAT: int(1000),
+  /** After a delivery, return payment − price when it is at least this much (smaller excess is kept). */
+  OVERPAY_REFUND_MIN_ZAT: int(20000),
   DUST_ZAT: int(20000),
   TICK_MS: int(10000),
   /** Wait this long for a possibly-broadcast send to appear in listSent before resending. */

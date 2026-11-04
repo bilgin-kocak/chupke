@@ -65,6 +65,21 @@ export function buildDeliveryMemo(d: { orderId: string; label: string; code: str
   throw new MemoTooLongError("delivery");
 }
 
+export function overpaymentTag(orderId: string): string {
+  return `Chupke #${orderId} overpayment`;
+}
+
+/** Returned excess after a successful delivery: tag line, what was paid vs the price, ref tag. */
+export function buildOverpaymentMemo(r: { orderId: string; excessZat: number; paidZat: number; priceZat: number; payingTxid: string }): string {
+  const memo = [
+    `${overpaymentTag(r.orderId)}: ${zatToZec(r.excessZat)} TAZ returned.`,
+    `You paid ${zatToZec(r.paidZat)} TAZ; the price was ${zatToZec(r.priceZat)} TAZ.`,
+    refundTag(r.payingTxid),
+  ].join("\n");
+  if (memoBytes(memo) > MEMO_MAX_BYTES) throw new MemoTooLongError("overpayment");
+  return memo;
+}
+
 export function buildRefundMemo(r: { orderId: string; reasonText: string; amountZat: number; purchaseFailed: boolean; payingTxid: string }): string {
   const amount = `${zatToZec(r.amountZat)} TAZ returned.`;
   const what = r.purchaseFailed ? "The purchase failed; nothing was bought." : "No purchase was made.";

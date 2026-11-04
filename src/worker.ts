@@ -53,6 +53,7 @@ const engine = new Engine({
     maxDailyUsd: cfg.MAX_DAILY_USD,
     dailyCapIncludesTest: cfg.DAILY_CAP_INCLUDES_TEST,
     deliveryAmountZat: cfg.DELIVERY_AMOUNT_ZAT,
+    overpayRefundMinZat: cfg.OVERPAY_REFUND_MIN_ZAT,
     purgeAfterMin: cfg.PURGE_AFTER_MIN,
     resendGuardMs: cfg.RESEND_GUARD_SEC * 1000,
     invoicePollMs: 8_000,
@@ -102,7 +103,7 @@ async function loop(): Promise<void> {
   ticking = true;
   try {
     const r = await engine.tick();
-    const busy = r.ingested + r.routed + r.advanced + r.refunds + r.expired > 0;
+    const busy = r.ingested + r.routed + r.advanced + r.refunds + r.overpayRefunds + r.expired > 0;
     log[r.errors.length ? "warn" : busy ? "info" : "debug"]({ ...r }, "tick");
   } catch (e) {
     log.error({ err: e instanceof Error ? e.message : String(e) }, "tick crashed");

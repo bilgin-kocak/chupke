@@ -24,6 +24,8 @@ export interface EngineConfig {
   /** Count free test products toward the daily cap (default false: the cap guards real spend). */
   dailyCapIncludesTest: boolean;
   deliveryAmountZat: number;
+  /** After a delivery, return payment − price when it is at least this much (smaller excess is kept). */
+  overpayRefundMinZat: number;
   purgeAfterMin: number;
   /** After a send may have gone out, wait this long for it to show in listSent before resending. */
   resendGuardMs: number;

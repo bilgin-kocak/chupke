@@ -1,7 +1,7 @@
 import { parsePaymentMemo } from "../zcash/memo.js";
 import { errMsg, type EngineDeps } from "./deps.js";
 import { advanceFulfillment } from "./fulfill.js";
-import { processRefund } from "./refund.js";
+import { processExcessRefund, processRefund } from "./refund.js";
 import { routePayment } from "./route.js";
 
 /** How many state steps one fulfillment may take inside a single tick (create → pay → poll → send). */
@@ -13,6 +13,7 @@ export interface TickReport {
   routed: number;
   advanced: number;
   refunds: number;
+  overpayRefunds: number;
   expired: number;
   errors: string[];
 }
@@ -45,7 +46,7 @@ export class Engine {
 
   async tick(): Promise<TickReport> {
     const t0 = this.d.now();
-    const report: TickReport = { ms: 0, ingested: 0, routed: 0, advanced: 0, refunds: 0, expired: 0, errors: [] };
+    const report: TickReport = { ms: 0, ingested: 0, routed: 0, advanced: 0, refunds: 0, overpayRefunds: 0, expired: 0, errors: [] };
     const steps: Array<[string, () => Promise<void> | void]> = [
       ["sync", () => this.d.wallet.sync()],
       ["ingest", async () => void (report.ingested = await this.ingest())],
@@ -53,6 +54,7 @@ export class Engine {
       ["route", () => void (report.routed = this.route())],
       ["fulfill", async () => void (report.advanced = await this.fulfill())],
       ["refund", async () => void (report.refunds = await this.refunds())],
+      ["overpay", async () => void (report.overpayRefunds = await this.overpayRefunds())],
       ["expire", () => void (report.expired = this.expire())],
       ["snapshot", () => this.snapshot()],
       ["purge", () => this.purge()],
@@ -104,6 +106,12 @@ export class Engine {
         next_attempt_at: 0,
         send_started_at: null,
         updated_at: now,
+        excess_zat: null,
+        excess_state: null,
+        excess_txid: null,
+        excess_attempts: 0,
+        excess_next_attempt_at: 0,
+        excess_send_started_at: null,
       });
       if (isNew) {
         added++;
@@ -165,6 +173,13 @@ export class Engine {
   async refunds(): Promise<number> {
     const due = this.d.store.dueRefunds(this.d.now());
     for (const p of due) await processRefund(this.d, p.key);
+    return due.length;
+  }
+
+  /** Step 6b: return overpayments (queued only after a successful delivery). */
+  async overpayRefunds(): Promise<number> {
+    const due = this.d.store.dueExcessRefunds(this.d.now());
+    for (const p of due) await processExcessRefund(this.d, p.key);
     return due.length;
   }
 

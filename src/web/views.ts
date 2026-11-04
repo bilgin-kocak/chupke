@@ -120,7 +120,10 @@ function render(s){
   tl.innerHTML="";
   steps.forEach(function(x,i){var li=document.createElement("li");li.textContent=x[1];if(at>=0&&i<at)li.className="done";if(i===at)li.className=s.stage==="sent"?"done":"now";tl.appendChild(li);});
   out.className="outcome"; out.textContent="";
-  if(s.stage==="sent"&&s.deliveryTxid){out.innerHTML="";out.appendChild(document.createTextNode("Check your wallet's memos. "));var a=document.createElement("a");a.href=s.explorer+s.deliveryTxid;a.textContent="Delivery on the explorer";a.rel="noreferrer";out.appendChild(a);}
+  if(s.stage==="sent"&&s.deliveryTxid){out.innerHTML="";out.appendChild(document.createTextNode("Check your wallet's memos. "));var a=document.createElement("a");a.href=s.explorer+s.deliveryTxid;a.textContent="Delivery on the explorer";a.rel="noreferrer";out.appendChild(a);
+    if(s.overpayZat){var taz=(s.overpayZat/1e8).toFixed(8).replace(/0+$/,"").replace(/\.$/,"");out.appendChild(document.createElement("br"));out.appendChild(document.createTextNode("You paid "+taz+" TAZ more than the price: "+(s.overpayState==="refunded"?"returned. ":s.overpayState==="held"?"held for review. ":"being returned. ")));
+      if(s.overpayRefundTxid){var o=document.createElement("a");o.href=s.explorer+s.overpayRefundTxid;o.textContent="Return on the explorer";o.rel="noreferrer";out.appendChild(o);}}}
+  if(s.stage==="sent"&&s.overpayZat&&s.overpayState!=="refunded"&&s.overpayState!=="held"){setTimeout(poll,3000);}
   if(s.stage==="refunding"){out.className="outcome bad";out.textContent="Refund on its way: "+(s.reasonText||"");}
   if(s.stage==="refunded"){out.className="outcome bad";out.textContent="Refunded: "+(s.reasonText||"")+". ";if(s.refundTxid){var r=document.createElement("a");r.href=s.explorer+s.refundTxid;r.textContent="Refund on the explorer";r.rel="noreferrer";out.appendChild(r);}}
   if(s.stage==="expired"){out.className="outcome bad";out.textContent="This quote expired. Start a new order.";}
@@ -202,6 +205,7 @@ ${stat("Last tick", lastTick ? `${Math.round((d.now - lastTick) / 1000)} s ago` 
       ["conf", (r) => s(r.confirmations)],
       ["reply", (r) => mask(r.reply_ua)],
       ["refund", (r) => tx(r.refund_txid)],
+      ["overpay", (r) => (r.excess_zat ? `${s(r.excess_zat)} ${s(r.excess_state)} ${tx(r.excess_txid)}` : "")],
       ["seen (IST)", (r) => t(r.first_seen_at)],
     ])}
 <h2>Fulfillments</h2>${table(d.fulfillments, [

@@ -200,12 +200,20 @@ async function sendDelivery(c: Ctx): Promise<void> {
   finishDelivery(c, txid);
 }
 
-function finishDelivery({ d, order }: Ctx, txid: string): void {
+function finishDelivery({ d, order, payment }: Ctx, txid: string): void {
   const now = d.now();
+  const excess = payment.amount_zat - order.price_zat;
   d.store.tx(() => {
     d.store.updateFulfillment(order.id, { state: "memo_sent", delivery_txid: txid, attempts: 0, error: null, updated_at: now });
     d.store.setOrderStatus(order.id, "delivered", now);
     d.store.addEvent(now, "memo_sent", { orderId: order.id }, `delivery txid ${txid}`);
+    // Overpaid: queue the excess for return, now that the purchase can no longer fail and trigger
+    // a full refund (so the excess is never returned twice).
+    const fresh = d.store.getPayment(payment.key)!;
+    if (excess >= d.cfg.overpayRefundMinZat && fresh.excess_state === null) {
+      d.store.updatePayment(payment.key, { excess_zat: excess, excess_state: "pending", excess_attempts: 0, excess_next_attempt_at: now });
+      d.store.addEvent(now, "overpaid", { orderId: order.id, paymentKey: payment.key }, `${excess} zat above the price; returning it`);
+    }
   });
 }
 

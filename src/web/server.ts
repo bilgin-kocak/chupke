@@ -32,6 +32,10 @@ export interface PublicStatus {
   reasonText: string | null;
   deliveryTxid: string | null;
   refundTxid: string | null;
+  /** Overpayment returned after delivery (amount above the price), if any. */
+  overpayZat: number | null;
+  overpayState: string | null;
+  overpayRefundTxid: string | null;
   explorer: string;
 }
 
@@ -54,6 +58,7 @@ export function publicStatus(store: Store, order: OrderRow, cfg: Pick<WebConfig,
   else if (stage !== "sent" && held) stage = "held";
   else if (stage === "waiting" && order.status === "expired") stage = "expired";
   const reasonSource = outcomeRefund ?? held;
+  const own = f ? pays.find((p) => p.key === f.payment_key) : undefined;
   return {
     id: order.id,
     label: order.label,
@@ -64,6 +69,9 @@ export function publicStatus(store: Store, order: OrderRow, cfg: Pick<WebConfig,
     reasonText: reasonSource ? reasonText(reasonSource.reason) : null,
     deliveryTxid: f?.delivery_txid ?? null,
     refundTxid: outcomeRefund?.refund_txid ?? null,
+    overpayZat: own?.excess_zat ?? null,
+    overpayState: own?.excess_state ?? null,
+    overpayRefundTxid: own?.excess_txid ?? null,
     explorer: cfg.EXPLORER_TX_URL,
   };
 }

@@ -30,6 +30,9 @@ class FakeWallet implements ZcashWallet {
    * the call failed (lost response / crash), "reject" = refused at proposal (nothing broadcast, known).
    */
   failNextSend: "before" | "after" | "reject" | null = null;
+  /** Apply failOnSendMode to the Nth send (1-based) instead of the next one. */
+  failOnSendNumber: number | null = null;
+  failOnSendMode: "before" | "after" | "reject" = "after";
   async info() {
     return { chainHeight: 1000, walletHeight: 1000 };
   }
@@ -49,6 +52,10 @@ class FakeWallet implements ZcashWallet {
   }
   async send(to: string, amountZat: number, memo: string) {
     this.sends++;
+    if (this.failOnSendNumber === this.sends) {
+      this.failNextSend = this.failOnSendMode;
+      this.failOnSendNumber = null;
+    }
     const txid = randomBytes(32).toString("hex");
     if (this.failNextSend === "before") {
       this.failNextSend = null;
@@ -136,6 +143,7 @@ const CFG: EngineConfig = {
   maxDailyUsd: 30,
   dailyCapIncludesTest: false,
   deliveryAmountZat: 1_000,
+  overpayRefundMinZat: 20_000,
   purgeAfterMin: 60,
   resendGuardMs: 180_000,
   invoicePollMs: 8_000,
@@ -380,6 +388,79 @@ describe("I7: reply addresses are purged after the order is terminal", () => {
     await h.ticks(1);
     for (let i = 0; i < 2; i++) await h.ticks(1, 60_000);
     expect(h.store.getPayment(out.key)!.reply_ua).toBe(reply);
+  });
+});
+
+describe("overpayment refunds", () => {
+  const isOverpay = (s: SentOutput) => s.memo!.includes("overpayment");
+
+  it("returns the excess after delivery, once, to the memo's reply address", async () => {
+    const reply = fakeUa();
+    const order = h.order("test-ok", fakeUa()); // the order's address must not be used (I5)
+    const out = h.pay(order.id, order.price_zat + 500_000, reply);
+    await h.ticks(4);
+    expect(h.store.getFulfillment(order.id)!.state).toBe("memo_sent");
+    const back = h.wallet.sent.filter(isOverpay);
+    expect(back).toHaveLength(1);
+    expect(back[0]!.to).toBe(reply);
+    expect(back[0]!.amountZat).toBe(500_000);
+    expect(back[0]!.memo!.split("\n")).toEqual([
+      `Chupke #${order.id} overpayment: 0.005 TAZ returned.`,
+      "You paid 0.015 TAZ; the price was 0.01 TAZ.",
+      `ref ${out.txid.slice(0, 8)}`,
+    ]);
+    expect(h.store.getPayment(out.key)!.excess_state).toBe("refunded");
+    await h.ticks(5); // no second return
+    expect(h.wallet.sent.filter(isOverpay)).toHaveLength(1);
+    expect(h.store.getOrder(order.id)!.status).toBe("delivered");
+  });
+
+  it("keeps an excess below the threshold (not worth a fee)", async () => {
+    const reply = fakeUa();
+    const order = h.order("test-ok", reply);
+    const out = h.pay(order.id, order.price_zat + 19_999, reply);
+    await h.ticks(4);
+    expect(h.store.getFulfillment(order.id)!.state).toBe("memo_sent");
+    expect(h.wallet.sent.filter(isOverpay)).toHaveLength(0);
+    expect(h.store.getPayment(out.key)!.excess_state).toBeNull();
+  });
+
+  it("a failed purchase that was overpaid gets one full refund and no separate excess refund", async () => {
+    const reply = fakeUa();
+    const order = h.order("test-fail", reply);
+    h.pay(order.id, order.price_zat + 500_000, reply);
+    await h.ticks(6);
+    expect(h.wallet.sent).toHaveLength(1);
+    expect(h.wallet.sent[0]!.amountZat).toBe(order.price_zat + 500_000);
+    expect(h.wallet.sent[0]!.memo).toContain("refund:");
+  });
+
+  it("a returned excess whose response was lost is found in listSent, not sent again", async () => {
+    const reply = fakeUa();
+    const order = h.order("test-ok", reply);
+    const out = h.pay(order.id, order.price_zat + 500_000, reply);
+    h.wallet.failOnSendNumber = 2; // send 1 = delivery, send 2 = overpayment refund
+    h.wallet.failOnSendMode = "after";
+    await h.ticks(1); // delivery and the (lost-response) excess send both happen in this tick
+    expect(h.store.getPayment(out.key)!.excess_state).toBe("sending");
+    await h.ticks(3);
+    expect(h.wallet.sends).toBe(2); // found by its tag, not resent
+    expect(h.store.getPayment(out.key)!.excess_state).toBe("refunded");
+  });
+
+  it("without listSent, a maybe-sent excess refund is held, never resent, and its address is kept", async () => {
+    const reply = fakeUa();
+    const order = h.order("test-ok", reply);
+    const out = h.pay(order.id, order.price_zat + 500_000, reply);
+    h.wallet.failOnSendNumber = 2;
+    h.wallet.failOnSendMode = "after";
+    await h.ticks(1);
+    expect(h.store.getPayment(out.key)!.excess_state).toBe("sending");
+    h.wallet.listSentSupported = false; // now the worker can't check whether it went out
+    for (let i = 0; i < 70; i++) await h.ticks(1, 60_000);
+    expect(h.wallet.sends).toBe(2);
+    expect(h.store.getPayment(out.key)!.excess_state).toBe("held");
+    expect(h.store.getPayment(out.key)!.reply_ua).toBe(reply); // kept for the manual review
   });
 });
 

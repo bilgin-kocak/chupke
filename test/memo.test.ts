@@ -3,7 +3,9 @@ import {
   MEMO_MAX_BYTES,
   MemoTooLongError,
   buildDeliveryMemo,
+  buildOverpaymentMemo,
   buildPaymentMemo,
+  overpaymentTag,
   buildRefundMemo,
   deliveryTag,
   memoBytes,
@@ -64,6 +66,18 @@ describe("delivery memo", () => {
 
   it("throws rather than truncating an oversized code", () => {
     expect(() => buildDeliveryMemo({ orderId: ORDER, label: "Gift", code: "C".repeat(520), pin: null, link: null })).toThrow(MemoTooLongError);
+  });
+});
+
+describe("overpayment memo", () => {
+  it("states the excess, what was paid and the price, with the order and ref tags", () => {
+    const memo = buildOverpaymentMemo({ orderId: ORDER, excessZat: 500_000, paidZat: 1_500_000, priceZat: 1_000_000, payingTxid: TXID_A });
+    expect(memo.split("\n")).toEqual([
+      `${overpaymentTag(ORDER)}: 0.005 TAZ returned.`,
+      "You paid 0.015 TAZ; the price was 0.01 TAZ.",
+      "ref aaaaaaaa",
+    ]);
+    expect(memo).not.toContain("refund:"); // distinct from refund memos, so resume matching can't mix them up
   });
 });
 

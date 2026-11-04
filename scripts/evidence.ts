@@ -59,6 +59,23 @@ for (const r of refunds) {
   lines.push(`| ${r.order_id} | \`${r.reason}\` (${reasonText(r.reason)}) | ${(r.amount_zat / 1e8).toString()} TAZ | ${x(r.txid)} | ${x(r.refund_txid)} | ${ist(r.updated_at)} |`);
 }
 if (refunds.length === 0) lines.push("| – | – | – | – | – | – |");
+
+const overpays = db
+  .prepare(
+    `SELECT p.order_id, p.amount_zat, p.excess_zat, p.txid, p.excess_txid,
+            (SELECT MAX(e.at) FROM events e WHERE e.payment_key = p.key AND e.type = 'overpay_refunded') AS at
+     FROM payments p WHERE p.excess_state = 'refunded' ORDER BY at DESC LIMIT 3`,
+  )
+  .all() as Array<{ order_id: string; amount_zat: number; excess_zat: number; txid: string; excess_txid: string; at: number }>;
+lines.push("");
+lines.push("### Overpayments returned (after delivery)");
+lines.push("");
+lines.push("| order | paid | returned | payment | return tx | at (IST) |");
+lines.push("| --- | --- | --- | --- | --- | --- |");
+for (const o of overpays) {
+  lines.push(`| ${o.order_id} | ${o.amount_zat / 1e8} TAZ | ${o.excess_zat / 1e8} TAZ | ${x(o.txid)} | ${x(o.excess_txid)} | ${ist(o.at)} |`);
+}
+if (overpays.length === 0) lines.push("| – | – | – | – | – | – |");
 const md = lines.join("\n") + "\n";
 if (values.out) writeFileSync(values.out, md);
 process.stdout.write(md);

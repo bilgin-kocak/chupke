@@ -1,5 +1,5 @@
 import type { PaymentRow } from "../db/store.js";
-import { buildRefundMemo, refundTag } from "../zcash/memo.js";
+import { buildOverpaymentMemo, buildRefundMemo, overpaymentTag, refundTag } from "../zcash/memo.js";
 import { NotSupportedError, SendNotBroadcastError } from "../zcash/wallet.js";
 import { backoffAt, errMsg, type EngineDeps } from "./deps.js";
 import { PURCHASE_FAILED_REASONS, reasonCode, reasonText } from "./guard.js";
@@ -90,4 +90,74 @@ async function resumeRefund(d: EngineDeps, p: PaymentRow): Promise<void> {
   }
   d.store.addEvent(now, "refund_resend", { orderId: p.order_id, paymentKey: p.key }, "no refund found in listSent; sending again");
   await sendRefund(d, p);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Overpayment refunds (SPEC §12 stretch 4). Queued by finishDelivery only after a successful
+// delivery, so a failed purchase's full refund and this partial one can never both happen.
+// Same rules as refunds: commit "sending" before the send, look for our own tagged send before
+// resending, hold for review if we can't look.
+// ---------------------------------------------------------------------------------------------
+
+export async function processExcessRefund(d: EngineDeps, key: string): Promise<void> {
+  const p = d.store.getPayment(key);
+  if (!p) return;
+  try {
+    if (p.excess_state === "pending") return await sendExcess(d, p);
+    if (p.excess_state === "sending") return await resumeExcess(d, p);
+  } catch (e) {
+    const now = d.now();
+    const fresh = d.store.getPayment(key)!;
+    d.store.updatePayment(key, { excess_next_attempt_at: backoffAt(now, fresh.excess_attempts, d.random) });
+    d.store.addEvent(now, "retry", { orderId: p.order_id, paymentKey: key }, `overpayment refund: ${errMsg(e)}`);
+  }
+}
+
+function holdExcess(d: EngineDeps, p: PaymentRow, why: string): void {
+  d.store.updatePayment(p.key, { excess_state: "held" });
+  d.store.addEvent(d.now(), "overpay_held", { orderId: p.order_id, paymentKey: p.key }, why);
+}
+
+async function sendExcess(d: EngineDeps, p: PaymentRow): Promise<void> {
+  const order = p.order_id ? d.store.getOrder(p.order_id) : undefined;
+  if (!p.reply_ua || !order || !p.excess_zat) return holdExcess(d, p, "overpayment refund needs review (no reply address or order)");
+  const memo = buildOverpaymentMemo({ orderId: order.id, excessZat: p.excess_zat, paidZat: p.amount_zat, priceZat: order.price_zat, payingTxid: p.txid });
+  const now = d.now();
+  // COMMIT "sending" BEFORE the money moves (I3).
+  d.store.updatePayment(p.key, { excess_state: "sending", excess_attempts: p.excess_attempts + 1, excess_send_started_at: now });
+  d.store.addEvent(now, "overpay_sending", { orderId: p.order_id, paymentKey: p.key }, `${p.excess_zat} zat`);
+  let txid: string;
+  try {
+    ({ txid } = await d.wallet.send(p.reply_ua, p.excess_zat, memo)); // I5: the paid memo's reply address
+  } catch (e) {
+    if (e instanceof SendNotBroadcastError) d.store.updatePayment(p.key, { excess_state: "pending", excess_send_started_at: null });
+    throw e;
+  }
+  finishExcess(d, p, txid);
+}
+
+function finishExcess(d: EngineDeps, p: PaymentRow, txid: string): void {
+  d.store.updatePayment(p.key, { excess_state: "refunded", excess_txid: txid });
+  d.store.addEvent(d.now(), "overpay_refunded", { orderId: p.order_id, paymentKey: p.key }, `overpayment refund txid ${txid}`);
+}
+
+async function resumeExcess(d: EngineDeps, p: PaymentRow): Promise<void> {
+  let sent;
+  try {
+    sent = await d.wallet.listSent();
+  } catch (e) {
+    if (e instanceof NotSupportedError) return holdExcess(d, p, "overpayment refund may have been sent; can't check listSent");
+    throw e;
+  }
+  const hit = sent.find(
+    (s) => s.memo !== null && s.memo.includes(overpaymentTag(p.order_id ?? "")) && s.memo.includes(refundTag(p.txid)) && s.amountZat === p.excess_zat,
+  );
+  if (hit) return finishExcess(d, p, hit.txid);
+  const now = d.now();
+  if (p.excess_send_started_at !== null && now - p.excess_send_started_at < d.cfg.resendGuardMs) {
+    d.store.updatePayment(p.key, { excess_next_attempt_at: p.excess_send_started_at + d.cfg.resendGuardMs });
+    return;
+  }
+  d.store.addEvent(now, "overpay_resend", { orderId: p.order_id, paymentKey: p.key }, "no overpayment refund found in listSent; sending again");
+  await sendExcess(d, p);
 }

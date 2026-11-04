@@ -50,7 +50,16 @@ export interface PaymentRow {
   next_attempt_at: number;
   send_started_at: number | null;
   updated_at: number;
+  /** Overpayment refund (excess above the price), queued only after a successful delivery. */
+  excess_zat: number | null;
+  excess_state: ExcessState | null;
+  excess_txid: string | null;
+  excess_attempts: number;
+  excess_next_attempt_at: number;
+  excess_send_started_at: number | null;
 }
+
+export type ExcessState = "pending" | "sending" | "refunded" | "held";
 
 export interface FulfillmentRow {
   order_id: string;
@@ -145,7 +154,8 @@ export class Store {
       .run(cutoff).changes;
     const payments = this.db
       .prepare(
-        `UPDATE payments SET reply_ua = NULL WHERE reply_ua IS NOT NULL AND updated_at < ? AND (
+        `UPDATE payments SET reply_ua = NULL WHERE reply_ua IS NOT NULL AND updated_at < ?
+           AND COALESCE(excess_state, '') NOT IN ('pending', 'sending', 'held') AND (
            state IN ('refunded', 'ignored_dust')
            OR (state = 'accepted' AND order_id IN (SELECT id FROM orders WHERE terminal_at IS NOT NULL AND terminal_at < ?))
            OR (state = 'held' AND COALESCE(reason, '') <> 'refund_needs_review'))`,
@@ -163,10 +173,12 @@ export class Store {
         .prepare(
           `INSERT OR IGNORE INTO payments (key, txid, pool, output_index, order_id, amount_zat, memo_ok, reply_ua,
              first_seen_at, mined_height, confirmations, state, reason, refund_txid, attempts, next_attempt_at,
-             send_started_at, updated_at)
+             send_started_at, updated_at, excess_zat, excess_state, excess_txid, excess_attempts,
+             excess_next_attempt_at, excess_send_started_at)
            VALUES (@key, @txid, @pool, @output_index, @order_id, @amount_zat, @memo_ok, @reply_ua, @first_seen_at,
              @mined_height, @confirmations, @state, @reason, @refund_txid, @attempts, @next_attempt_at,
-             @send_started_at, @updated_at)`,
+             @send_started_at, @updated_at, @excess_zat, @excess_state, @excess_txid, @excess_attempts,
+             @excess_next_attempt_at, @excess_send_started_at)`,
         )
         .run(p).changes === 1
     );
@@ -189,6 +201,14 @@ export class Store {
     return this.db
       .prepare(
         `SELECT * FROM payments WHERE state IN ('refund_pending', 'refund_sending') AND next_attempt_at <= ? ORDER BY first_seen_at, key`,
+      )
+      .all(now) as PaymentRow[];
+  }
+
+  dueExcessRefunds(now: number): PaymentRow[] {
+    return this.db
+      .prepare(
+        `SELECT * FROM payments WHERE excess_state IN ('pending', 'sending') AND excess_next_attempt_at <= ? ORDER BY first_seen_at, key`,
       )
       .all(now) as PaymentRow[];
   }

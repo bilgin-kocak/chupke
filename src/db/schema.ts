@@ -43,7 +43,14 @@ CREATE TABLE IF NOT EXISTS payments (
   attempts        INTEGER NOT NULL DEFAULT 0,
   next_attempt_at INTEGER NOT NULL DEFAULT 0,
   send_started_at INTEGER,                  -- extra: set (committed) right before a refund send
-  updated_at      INTEGER NOT NULL
+  updated_at      INTEGER NOT NULL,
+  -- extra: overpayment refund of the excess above the price, after a successful delivery
+  excess_zat             INTEGER,
+  excess_state           TEXT,              -- NULL | pending | sending | refunded | held
+  excess_txid            TEXT,
+  excess_attempts        INTEGER NOT NULL DEFAULT 0,
+  excess_next_attempt_at INTEGER NOT NULL DEFAULT 0,
+  excess_send_started_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS payments_order ON payments(order_id);
 CREATE INDEX IF NOT EXISTS payments_state ON payments(state);
@@ -91,5 +98,29 @@ export function openDb(path: string): DB {
   db.pragma("busy_timeout = 5000");
   db.pragma("synchronous = NORMAL");
   db.exec(SCHEMA);
+  migrate(db);
   return db;
+}
+
+/** Columns added after the first deploy; ALTER TABLE for databases created before them. */
+const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
+  ["payments", "excess_zat", "INTEGER"],
+  ["payments", "excess_state", "TEXT"],
+  ["payments", "excess_txid", "TEXT"],
+  ["payments", "excess_attempts", "INTEGER NOT NULL DEFAULT 0"],
+  ["payments", "excess_next_attempt_at", "INTEGER NOT NULL DEFAULT 0"],
+  ["payments", "excess_send_started_at", "INTEGER"],
+];
+
+function migrate(db: DB): void {
+  for (const [table, column, ddl] of ADDED_COLUMNS) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (cols.some((c) => c.name === column)) continue;
+    try {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+    } catch (e) {
+      // The other process (web or worker) may have added it a moment ago.
+      if (!/duplicate column/i.test((e as Error).message)) throw e;
+    }
+  }
 }
