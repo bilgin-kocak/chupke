@@ -24,7 +24,7 @@ Either of these works:
 ## 2. Code and secrets
 
 ```bash
-git clone -b claude/blissful-hamilton-amf64f https://github.com/bilgin-kocak/chupke && cd chupke
+git clone https://github.com/bilgin-kocak/chupke && cd chupke
 ```
 
 Create `.env` in the repo root. Only the worker reads it; the web gets only the public variables that

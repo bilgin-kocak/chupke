@@ -6,7 +6,7 @@
 *Chupke* (चुपके) is Hindi for "quietly". It was built in one day for the Free Society Hack (Zcash × Bitrefill), Mumbai,
 4 Nov 2026, on Zcash testnet (NU7) and Bitrefill REST v2 plus the Bitrefill MCP.
 
-[![ci](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml/badge.svg?branch=claude/blissful-hamilton-amf64f)](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml)
+[![ci](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bilgin-kocak/chupke/actions/workflows/ci.yml)
 
 | Shop | Order, delivered | Order, refunded | Operator dashboard |
 | --- | --- | --- | --- |
