@@ -124,4 +124,14 @@ still to be checked. The adapter doesn't need them.
 
 ## Send log
 
-_(filled in once the faucet funds arrive)_
+### Receive: faucet → buyer (12:42 IST)
+- `listIncoming` (adapter `notes all`) returned one output with key
+  `c3178bd7950353d9ba58c370983d8102a705227000f42fcb3c045747700146ef:ironwood:0`:
+  pool **ironwood**, 100,000,000 zat (1 TAZ), mined at 4581267, and a memo of 74 bytes (the faucet's text,
+  not printed). Explorer link:
+  https://testnet.zcashexplorer.app/transactions/c3178bd7950353d9ba58c370983d8102a705227000f42fcb3c045747700146ef
+- Sending to a UA whose only shielded receiver is orchard-type landed in the Ironwood pool, which is
+  consistent with Orchard being sealed.
+- `balance` showed `total_ironwood_balance: 100_000_000` with underscore digit separators. The parser
+  was fixed in commit "parse underscore digit separators".
+- `spendable_balance` stays 0 until the note has `min_confirmations` (3) confirmations.
