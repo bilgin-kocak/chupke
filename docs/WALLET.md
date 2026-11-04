@@ -163,6 +163,29 @@ still to be checked. The adapter doesn't need them.
   `#<orderId> delivered` / `ref <txid8>` tags.
 - Fee: 600,000 − 1,000 − 589,000 = **10,000 zat** (ZIP 317 minimum, 2 logical actions).
 
+### M2 findings
+
+- **A refused send is identifiable.** If the wallet can't cover the amount, `quicksend` exits 1 with
+  `Error: Send error.` / `caused by: Propose send error.` /
+  `caused by: Insufficient balance (have 98380000, need 100000010000 including fee)`. This fails at the
+  proposal stage, so nothing was built or broadcast. The adapter raises `SendNotBroadcastError` for it, and
+  the engine retries on normal backoff instead of its 3-minute "may have gone out" guard. The same output
+  also shows the fee: 10,000 zat.
+- **Change needs 3 confirmations.** A single-note wallet can send again only after its change has
+  3 confirmations, which takes about 75–120 s at ~25–40 s blocks. Back-to-back sends from one wallet
+  therefore space themselves by about two minutes; the refund suite waits for `spendable` between payments.
+- **Split mode works with a view-only wallet.** `scripts/init-inbox.ts` exported the shop UFVK (514 chars,
+  birthday 4581118) and created a view-only wallet with `--viewkey <UFVK> --birthday <H> --waitsync`. It
+  synced in about 3 s.
+  - Its primary address is identical to the shop wallet's.
+  - `notes all` gives the same 4 outputs with identical payment keys.
+  - `quicksend` from it fails, as it should for a view-only wallet.
+  - Caveat: zingo-cli has no environment variable for a viewing key, so the UFVK sits on the
+    command line, and in the local process list, while the inbox is being created.
+- **Full rescan.** `rescan` restarts sync inside its own process, which one-shot mode would abandon when it
+  exits. `ZingoWallet.rescan()` therefore runs `--nosync clear`, which drops every note, coin and
+  transaction, and then `--waitsync height`, which syncs again from the birthday.
+
 ### VERIFY 5 answer
 A send to a `utest1` address is accepted on NU7 testnet. Both test transactions were mined in Ironwood
 outputs, and their explorer links are listed above. The explorer itself 403s from the sandbox; the
