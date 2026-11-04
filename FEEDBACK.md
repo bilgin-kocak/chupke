@@ -57,6 +57,15 @@ what we tried, what happened, and what we expected. At M4 it gets cleaned up int
   - The 200 from `/pay` with a stale `unpaid` body is surprising. We treat the 200 as paid and confirm
     with `GET`.
 
+### 2026-11-04 13:43: failure statuses not in the docs (found by the live refund suite)
+- **Tried:** buying `test-gift-card-code-fail<&>10` (create, pay, poll) and waiting for a documented failure state.
+- **Happened:** the invoice settled at `status:"all_error"` with `payment.status:"complete"`, and its order at
+  `status:"permanent_failure"`. Neither value is in the documented lists: invoice blocked/denied/payment_error,
+  order failed/refunded. Our worker kept polling a dead order, and the buyer's refund didn't start.
+- **Expected:** a complete, documented list of terminal order and invoice states, so failure handling can't
+  silently miss one. We now treat `all_error` and `permanent_failure` (plus error/cancelled) as failures,
+  and we raise a "stuck" event for any paid order that stays unresolved for 15 minutes.
+
 ### 2026-11-04 12:56: redemption data inside invoices
 - **Tried:** polling `GET /invoices/{id}` for delivery status.
 - **Happened:** each order in the invoice response carries `redemption_info`, so the gift card secret travels

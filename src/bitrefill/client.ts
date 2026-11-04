@@ -74,8 +74,13 @@ export interface CreateInvoiceRequest {
   auto_pay: false;
 }
 
-export const INVOICE_FAILED_STATUSES = new Set(["blocked", "denied", "payment_error"]);
-export const ORDER_FAILED_STATUSES = new Set(["failed", "refunded"]);
+/**
+ * Failure states. The docs list blocked/denied/payment_error and failed/refunded; live test products
+ * fail with invoice "all_error" and order "permanent_failure" (FEEDBACK.md, 2026-11-04 13:43).
+ * Unknown states keep polling (the engine records a "stuck" event if it lasts).
+ */
+export const INVOICE_FAILED_STATUSES = new Set(["blocked", "denied", "payment_error", "all_error"]);
+export const ORDER_FAILED_STATUSES = new Set(["failed", "refunded", "permanent_failure", "error", "cancelled", "canceled"]);
 
 /** Done means every order is "delivered"; an invoice marked "complete" alone is not proof. */
 export function allOrdersDelivered(inv: Invoice): boolean {

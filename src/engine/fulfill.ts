@@ -5,6 +5,9 @@ import { buildDeliveryMemo, deliveryTag } from "../zcash/memo.js";
 import { NotSupportedError, SendNotBroadcastError } from "../zcash/wallet.js";
 import { backoffAt, errMsg, type EngineDeps } from "./deps.js";
 
+/** A paid order that is neither delivered nor a known failure after this long gets a "stuck" event. */
+const STUCK_AFTER_MS = 15 * 60_000;
+
 /**
  * advance(f) by fulfillment state (SPEC §8). Every money-moving call (pay, wallet send) is preceded
  * by a committed state change (I3); resumes look before they act. Redemption codes exist only in
@@ -156,6 +159,12 @@ async function pollInvoice(c: Ctx): Promise<void> {
     return;
   }
   if (invoiceFailed(inv)) return failAndRefund(c, "bitrefill_order_failed");
+  const paidFor = now - (f.spend_at ?? f.created_at);
+  if (paidFor > STUCK_AFTER_MS && !(f.error ?? "").startsWith("stuck")) {
+    // Not delivered and not a failure we know: keep polling (it may still deliver), but say so once.
+    d.store.addEvent(now, "stuck", { orderId: order.id }, `paid ${Math.round(paidFor / 60_000)} min ago; invoice ${inv.status}, orders ${inv.orders.map((o) => o.status).join(",")}`);
+    d.store.updateFulfillment(order.id, { error: `stuck: invoice ${inv.status}` });
+  }
   d.store.updateFulfillment(order.id, { invoice_status: inv.status, next_attempt_at: now + d.cfg.invoicePollMs, updated_at: now });
 }
 

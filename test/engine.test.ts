@@ -100,8 +100,9 @@ class FakeBitrefill implements BitrefillPort {
     this.payCalls++;
     const fails = inv.orderProduct.endsWith("-fail");
     inv.payment = { status: "complete", price: 13441, currency: "BTC" };
-    inv.status = fails ? "not_delivered" : "all_delivered";
-    inv.orders = inv.orders.map((o) => ({ ...o, status: fails ? "failed" : "delivered" }));
+    // Live shapes (2026-11-04): success "all_delivered"/"delivered", failure "all_error"/"permanent_failure".
+    inv.status = fails ? "all_error" : "all_delivered";
+    inv.orders = inv.orders.map((o) => ({ ...o, status: fails ? "permanent_failure" : "delivered" }));
     if (this.crashAfterPay) {
       this.crashAfterPay = false;
       throw new BitrefillError("network", null, null, "network error after paying");

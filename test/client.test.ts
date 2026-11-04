@@ -92,6 +92,10 @@ describe("BitrefillClient", () => {
     expect(invoiceFailed({ ...invoice("denied", "unpaid", []) })).toBe(true);
     expect(invoiceFailed({ ...invoice("complete", "paid", [["o1", "failed"]]) })).toBe(true);
     expect(invoiceFailed({ ...invoice("complete", "paid", [["o1", "delivered"]]) })).toBe(false);
+    // Live shape of a failing test product (2026-11-04): invoice "all_error", order "permanent_failure".
+    expect(invoiceFailed({ ...invoice("all_error", "complete", [["o1", "permanent_failure"]]) })).toBe(true);
+    expect(invoiceFailed({ ...invoice("not_delivered", "complete", [["o1", "permanent_failure"]]) })).toBe(true);
+    expect(invoiceFailed({ ...invoice("not_delivered", "complete", [["o1", "processing"]]) })).toBe(false);
     // "complete" alone is not proof of delivery.
     expect(allOrdersDelivered({ ...invoice("complete", "paid", [["o1", "processing"]]) })).toBe(false);
   });
