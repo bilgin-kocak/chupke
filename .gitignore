@@ -1,0 +1,5 @@
+.env
+data/
+wallets/
+node_modules/
+*.db
