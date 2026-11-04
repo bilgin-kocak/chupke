@@ -53,6 +53,52 @@ There was no manual step after the payment. The event trail (from the `events` t
   `CHUPKE1`, `Code:` and `utest1`.
 - A tick takes about 6 s, dominated by `--waitsync` (about 2 s) and three zingo-cli reads of about 1 s each.
 
+## M2 live refunds, restart and rescan (Wed 4 Nov 2026, 13:37–13:50 IST)
+
+`scripts/refund-suite.sh YMXHFE23J6` drove real testnet payments from the CLI buyer wallet. The worker ran with
+`GRACE_MIN=1`, and a second web on :8081 had `ORDER_TTL_MIN=1` for the expiry case. Every refund went to the
+reply address in the paid memo, and the buyer wallet received each memo with its reason:
+
+| case | order | payment txid | reason (memo text) | refund txid |
+| --- | --- | --- | --- | --- |
+| underpaid (0.005 of 0.01) | SQMXQ5C4Q6 | `24ad3c91c6f14ef64a815ba375172036110182c833041f853e0735473633d6a0` | underpaid ("Payment was less than the price") | `f2a9b0a85a7331e881cb879b77fccee7a3686594875759a7aac2f97a3eb9e04d` |
+| over the per-order cap ($20) | N3RVZ44M5G | `6f95a052ee4135961e0bb22faefe319d2924441444060a5002d0ebd77795f5e3` | over_order_cap ("Over the per-order limit") | `a1bbe272901868c7824886963cd9c3d4acb2aa6d641efd23ef53f7287cea8932` |
+| failing Bitrefill product | KXYYT4NGG8 | `2277378b2eb83d2a7341e3ac8f26cbf3c3ce331f88233ac5dba5d5828865a128` | bitrefill_order_failed ("The purchase failed; nothing was bought.") | `4c9f9879779c53887ac0d6a9002878f48cec9413175796edfdff78d817d1eb79` |
+| duplicate payment | YMXHFE23J6 | `5ec26ab4e9a20e10d4d7b50db58dc1a2f171a1e939b07d0b6e1e4fcc5032024e` | duplicate_payment ("This order was already paid"), plus a `duplicate_skipped` event | `34f0a31ac141357661471ddc9111bcedf2cdd076b50e59792f0b05dcad1a92d8` |
+| late payment, expired quote | CVTJ3622GM | `4baa29499b49b9e832a9e69e8f8e4a58fc309668359e221faeaddc0b9eb49d5e` | quote_expired ("The price quote expired") | `4e45c0c2a676c5e516ba21352d2ac08a90c2a206c3efdec2330faa75488413cb` |
+
+Every refund returns the full amount, and the shop pays the network fee from its float. Explorer links take the
+form `https://testnet.zcashexplorer.app/transactions/<txid>`.
+
+**Bug found live:**
+- The failing product's invoice ended at `all_error`, and its order at `permanent_failure`. Neither is a
+  documented state, so the worker kept polling.
+- Fixed in commit "Treat Bitrefill's live failure states as failures". On restart the worker resumed
+  KXYYT4NGG8 from `paid`, recognized the failure, and refunded it.
+
+**Graceful stop:** SIGTERM arrived in the middle of a tick that was sending a refund. The worker logged
+"stopping after the current tick", finished the tick (11.9 s), and exited 0.
+
+**Restart with a full rescan:**
+1. Stopped the worker.
+2. Ran `npx tsx scripts/rescan.ts`. For both shop and inbox this is `clear` followed by a re-sync from the
+   birthday, about 4 s each. Both then listed 8 received outputs.
+3. Restarted the worker in `WALLET_MODE=split`.
+4. Result: the only new event was `restart_ingest: 6 known output(s) seen again and skipped (INSERT OR IGNORE), 0 new`.
+   Payments stayed at 6, fulfillments at 2 and Bitrefill invoices at 2, and wallet sends stayed at 6. So there
+   was no new purchase and nothing sent again.
+
+**Split mode end to end:**
+- Order 3J5T3XDWPH: the view-only inbox saw the payment `fe66b880ceceaba77e3dfedd26a7ad46d28282136358782433503e9f23124293`.
+- The full outbox bought Bitrefill invoice `122d00de-a049-4acc-b735-23ef85b0dcfb` and sent the delivery memo
+  `6b8d1f3f8ccf9990040d7ae18ed6a9daf6e41e6bd6b1764ab57f674c5f555f7d`.
+- The code arrived in the buyer wallet.
+
+**429 handling and crash paths:**
+- Tests cover these (test/client.test.ts and test/engine.test.ts, 73 tests in all): Retry-After retries on GETs,
+  no retry on pay or invoice creation, and crashes after create, during paying, and in refund_sending.
+- A 429 wasn't provoked live, to stay well inside Bitrefill's limits.
+
 ## Adapter rules as built (src/zcash/zingo.ts)
 
 - One zingo-cli process per call, serialized per data dir, with a 120 s timeout (SIGTERM, then SIGKILL).
