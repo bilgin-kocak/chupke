@@ -118,7 +118,13 @@ Faucets: Fauzec (1 TAZ/day/address), Valar, Jino Labs. Mentors can send more.
 
 7. BITREFILL REST V2
 Base URL https://api.bitrefill.com/v2 (their OpenAPI shows api-bitrefill.com; VERIFY with /ping). Header "Authorization: Bearer <BITREFILL_API_KEY>".
-> VERIFIED 2026-11-04: both hosts answer GET /v2/ping (401 `no_token` without a key). We use https://api.bitrefill.com/v2, as the Quickstart does. The authenticated calls, test products and the redemption_info shape are PENDING until the key arrives.
+> VERIFIED 2026-11-04: both hosts answer GET /v2/ping (401 `no_token` without a key). We use https://api.bitrefill.com/v2, as the Quickstart does. With the key (attached by the sandbox proxy as a network secret), ping returns `pong`.
+> - The balance came back as `{"balance":0,"currency":"BTC"}`. Prices are integer sats, about 1344 per USD.
+> - Test products are visible with `include_test_products=true`; nothing had to be enabled.
+> - Package ids are opaque strings like `test-gift-card-code<&>10`. test-gift-card-code is ranged 10–100 USD in steps of 10, so the smallest test order is $10.
+> - The test-ok buy ran create, pay (200), poll and delivered in about 1.2 s (invoice ae97a250-38fc-4f3f-b238-3c96fecbad63).
+> - Live statuses: the top-level invoice `status` is `not_delivered`/`all_delivered`, and `payment.status` goes unpaid → payment_confirmed → complete. The pay 200 body still showed `unpaid`.
+> - `redemption_info` on GET /orders/{id} is an object (code, instructions). GET /invoices/{id} embeds it in every order; the client strips it.
 Endpoints: GET /ping (1 req per 3 s), GET /accounts/balance, GET /products/search?q=, GET /products/{id} (with packages[]), POST /invoices, POST /invoices/{id}/pay, GET /invoices/{id}, GET /orders/{id}.
 Create invoice: POST /invoices with
 {"products":[{"product_id":"...","package_id":"<exact string from product details>","quantity":1}],"payment_method":"balance","auto_pay":false}
