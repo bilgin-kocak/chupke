@@ -119,7 +119,7 @@ balance is 0 and none was needed for the demo. The real-product path is built an
   In Docker the web gets no `.env` and never mounts the wallets volume.
 - **Node 22, TypeScript (strict), tsx, Hono** (server-rendered HTML, one inline CSS block, no third-party scripts, fonts or CDNs,
   strict CSP, `no-referrer`, no request logging), **better-sqlite3**, **zod** (env and every external response),
-  **pino** (path redaction plus address scrubbing), **qrcode** (server-side SVG), **vitest** (78 tests; fakes only in tests).
+  **pino** (path redaction plus address scrubbing), **qrcode** (server-side SVG), **vitest** (84 tests; fakes only in tests).
 - **Zcash via zingo-cli**, behind a `ZcashWallet` adapter. Calls are one-shot and serialized per wallet directory
   (an in-process queue plus a cross-process lock file), with a 120 s timeout and zod-parsed stdout. Logs carry only the
   command, exit code and duration. Findings are in [docs/WALLET.md](docs/WALLET.md):
