@@ -5,9 +5,10 @@ on:
     branches: ["**"]
   workflow_dispatch:
 
+# Queue instead of cancelling, so the long Docker build always finishes (only the newest pending run is kept).
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
