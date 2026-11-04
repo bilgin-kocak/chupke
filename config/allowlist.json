@@ -14,5 +14,13 @@
     "product_id": "test-gift-card-code-fail",
     "package_id": "test-gift-card-code-fail<&>10",
     "value_usd": 10
+  },
+  {
+    "sku": "test-big",
+    "kind": "test",
+    "label": "Test gift card $20 (over the per-order limit)",
+    "product_id": "test-gift-card-code",
+    "package_id": "test-gift-card-code<&>20",
+    "value_usd": 20
   }
 ]
