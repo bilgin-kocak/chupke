@@ -1,0 +1,22 @@
+diff --git a/zingo-netutils/src/lib.rs b/zingo-netutils/src/lib.rs
+index 250644d..c80fd39 100644
+--- a/zingo-netutils/src/lib.rs
++++ b/zingo-netutils/src/lib.rs
+@@ -152,7 +152,16 @@ fn client_tls_config() -> ClientTlsConfig {
+             .with_webpki_roots()
+     }
+     #[cfg(not(test))]
+-    ClientTlsConfig::new().with_webpki_roots()
++    {
++        // Local patch (Chupke): an optional extra trust root for hosts whose
++        // egress re-terminates TLS with its own CA. Verification stays on; with
++        // ZINGO_EXTRA_CA_FILE unset this is exactly the upstream config.
++        let config = ClientTlsConfig::new().with_webpki_roots();
++        match std::env::var_os("ZINGO_EXTRA_CA_FILE").map(std::fs::read) {
++            Some(Ok(pem)) => config.ca_certificate(tonic::transport::Certificate::from_pem(pem)),
++            _ => config,
++        }
++    }
+ }
+ 
+ /// Trait for communicating with a Zcash chain indexer.
