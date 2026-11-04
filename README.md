@@ -33,7 +33,7 @@ flowchart LR
 **The loop.**
 1. **Trigger:** a shielded payment arrives with a `CHUPKE1` memo.
 2. **Guarantee:** an allowlist and per-order and daily caps; exactly-once purchasing (one fulfillment per order, ever;
-   each received output processed once); automatic refunds for every failure path.
+   each received output processed once); automatic refunds for every failure path, and overpayments returned.
 3. **Fulfillment:** the worker buys the card on Bitrefill from the shop's own balance.
 4. **Ending:** the code arrives in the buyer's wallet as an encrypted memo. The page never shows it.
 
@@ -50,6 +50,8 @@ with refunds) and Lane 2's ending (delivery in the buyer's own encrypted inbox).
 5. The worker sends the code to the reply address as a shielded memo:
    `Chupke #<order> delivered` / label / `Code: …` / `PIN: …` / `Redeem: …`
 6. On any failure the worker sends a shielded refund of the full amount. The memo carries the reason and a `ref <txid8>` tag.
+7. If the buyer paid more than the price, the worker returns the excess after delivery:
+   `Chupke #<order> overpayment: … TAZ returned.` An excess under 20,000 zat isn't worth a network fee and is kept.
 
 **Merchant of record.** The buyer's ZEC pays Chupke; Chupke pays Bitrefill from its own balance. Today that balance is
 event credits. In production it would be ZEC revenue converted to USDC in batches. Bitrefill never receives or accepts ZEC here.
@@ -99,6 +101,7 @@ These are all real transactions. The full list is in [docs/EVIDENCE.md](docs/EVI
 | refund: duplicate payment | YMXHFE23J6 | [`34f0a31a…92d8`](https://testnet.zcashexplorer.app/transactions/34f0a31ac141357661471ddc9111bcedf2cdd076b50e59792f0b05dcad1a92d8) |
 | refund: quote expired | CVTJ3622GM | [`4e45c0c2…13cb`](https://testnet.zcashexplorer.app/transactions/4e45c0c2a676c5e516ba21352d2ac08a90c2a206c3efdec2330faa75488413cb) |
 | split-mode delivery (view-only inbox watched, outbox sent) | 3J5T3XDWPH | [`6b8d1f3f…5f7d`](https://testnet.zcashexplorer.app/transactions/6b8d1f3f8ccf9990040d7ae18ed6a9daf6e41e6bd6b1764ab57f674c5f555f7d) |
+| overpayment returned after delivery (paid 0.015, price 0.01) | VTQ8KA58D0 | [`287e7afd…b532`](https://testnet.zcashexplorer.app/transactions/287e7afd27e258ed7e570a31d74d9cadd753a49a810289e886eda4a73729b532) |
 
 **Bitrefill purchases use Bitrefill's free test products.** Every invoice above is a real REST v2 invoice
 (created, paid from the shop balance, delivered or failed), but no real-money gift card was bought: the shop's Bitrefill
@@ -131,6 +134,8 @@ balance is 0 and none was needed for the demo. The real-product path is built an
   - On resume the worker looks before it acts. It checks the invoice before paying again. It searches its own sends for
     `#<order> delivered` / `ref <txid8>` before resending, after a 3-minute guard. Without the ability to look,
     it holds for review instead of re-sending money.
+  - Overpayments are returned only *after* delivery, so a failed purchase's full refund and an excess return can never
+    both happen. The return has its own committed state and the same look-before-resend rule.
 - **Bitrefill REST v2 client.**
   - A sliding-window limiter allows 55 requests per 10 min, with separate windows for product endpoints and `/ping`.
   - GETs retry on 429 (honoring `Retry-After`), 5xx and network errors; money-moving POSTs never retry.

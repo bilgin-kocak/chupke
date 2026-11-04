@@ -128,6 +128,26 @@ This exercised the published image `ghcr.io/bilgin-kocak/chupke:d53847e…`, bui
 - **Not exercised here:** restoring the wallet from `ZINGO_SEED` inside a fresh container volume. That uses the same
   `initWallet` path verified live in docs/WALLET.md ("Restore from seed").
 
+## Overpayment refund, live (Wed 4 Nov 2026, 15:54–15:56 IST)
+
+The new code ran as the sandbox worker (split mode) and web. The containers, which ran the previous image, were stopped
+first, so there was one worker. Order VTQ8KA58D0 (price 0.01 TAZ) was paid **0.015 TAZ** from the CLI buyer wallet with
+`buyer-pay --amount 1500000` (`da8fef1ba32e27c5b52427569c9787d85e62418c87207cf265c7ea7aee1e1b62`).
+
+| time | event | detail |
+| --- | --- | --- |
+| 15:54:37 | payment_seen | 1,500,000 zat, 0 conf |
+| 15:55:26 | payment_confirmed → accepted | the guard compares the amount with the price (≥), so overpaying passes |
+| 15:55:27 | invoice_created → paying → paid → delivered | Bitrefill invoice `cb3594b7-5612-49a8-b117-54e2b77315f9` |
+| 15:55:33 | memo_sent | delivery `fde411c81c0cfb23466ce08ce37a4f38c0afb89e0a10bc8ad9b18b9e176e7033` |
+| 15:55:33 | overpaid → overpay_sending | 500,000 zat above the price, state committed before the send |
+| 15:55:39 | overpay_refunded | `287e7afd27e258ed7e570a31d74d9cadd753a49a810289e886eda4a73729b532` |
+
+- The buyer wallet received both memos. The return reads `Chupke #VTQ8KA58D0 overpayment: 0.005 TAZ returned.` /
+  `You paid 0.015 TAZ; the price was 0.01 TAZ.` / `ref da8fef1b`.
+- The existing database was migrated in place: six `excess_*` columns were added at worker start.
+- The worker log has 0 hits for the buyer UA, `CHUPKE1`, `Code:` and the overpayment memo text.
+
 ## Adapter rules as built (src/zcash/zingo.ts)
 
 - One zingo-cli process per call, serialized per data dir, with a 120 s timeout (SIGTERM, then SIGKILL).
