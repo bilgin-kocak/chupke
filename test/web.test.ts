@@ -66,9 +66,11 @@ describe("web", () => {
     store.addPoolAddress(fakeUa(), 1, fakeUa(), 0); // derived by another wallet: never handed out
     const first = await (await a.request((await createOrder(a, fakeUa())).headers.get("location")!)).text();
     expect(first).toContain(`zcash:${own}?amount=0.01`);
+    expect(first).toContain("This payment address is used for this order only.");
     expect(first).not.toContain(SHOP);
     const second = await (await a.request((await createOrder(a, fakeUa())).headers.get("location")!)).text();
     expect(second).toContain(`zcash:${SHOP}?amount=0.01`);
+    expect(second).not.toContain("used for this order only");
     expect(store.freePoolCount(SHOP)).toBe(0);
   });
 

@@ -132,6 +132,7 @@ export function createApp(store: Store, cfg: WebConfig) {
         uri,
         memo,
         qr: uri ? await qrSvg(uri) : null,
+        ownAddress: ua !== null && ua !== shop,
         statusJson: JSON.stringify(status).replace(/</g, "\\u003c"),
       }),
     );

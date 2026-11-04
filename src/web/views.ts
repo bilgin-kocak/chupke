@@ -90,6 +90,8 @@ export function orderPage(p: {
   uri: string | null;
   memo: string | null;
   qr: string | null;
+  /** The QR pays this order's own diversified address rather than the shared shop address. */
+  ownAddress: boolean;
   statusJson: string;
 }): string {
   const pay = p.uri
@@ -97,6 +99,7 @@ export function orderPage(p: {
 <p class="row" style="justify-content:center;margin-top:12px"><a class="btn" href="${esc(p.uri)}">Open in wallet</a>
 <button class="ghost" type="button" data-copy="${esc(p.uri)}">Copy payment link</button></p>
 <p style="text-align:center;margin:8px 0 0"><span class="amount">${esc(p.priceTaz)} TAZ</span><br><span class="hint">Send exactly this amount; your wallet adds the network fee.</span></p>
+${p.ownAddress ? `<p style="text-align:center;margin:6px 0 0" class="hint">This payment address is used for this order only.</p>` : ""}
 <p style="text-align:center" class="hint" id="countdown"></p></div>
 <h2>Memo (your wallet should fill it in)</h2>
 <code class="memo" id="memo">${esc(p.memo ?? "")}</code>
