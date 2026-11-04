@@ -355,6 +355,34 @@ describe("invariants (SPEC §13)", () => {
   });
 });
 
+describe("I7: reply addresses are purged after the order is terminal", () => {
+  it("purges order and payment reply addresses PURGE_AFTER_MIN after the end, even as blocks keep coming", async () => {
+    const reply = fakeUa();
+    const order = h.order("test-ok", reply);
+    const out = h.pay(order.id, order.price_zat - 1, reply); // underpaid -> refunded
+    await h.ticks(2);
+    expect(h.store.getPayment(out.key)!.state).toBe("refunded");
+    for (let i = 0; i < 70; i++) {
+      h.wallet.incoming = h.wallet.incoming.map((o) => ({ ...o, confirmations: o.confirmations + 1 })); // a block every minute
+      await h.ticks(1, 60_000);
+    }
+    expect(h.store.getPayment(out.key)!.reply_ua).toBeNull();
+    expect(h.store.getOrder(order.id)!.reply_ua).toBeNull();
+    expect(h.store.events(500).some((e) => e.type === "purged")).toBe(true);
+  });
+
+  it("keeps the reply address while a delivery is still pending", async () => {
+    const reply = fakeUa();
+    const order = h.order("test-ok", reply);
+    const out = h.pay(order.id, order.price_zat, reply);
+    h.wallet.failNextSend = "after"; // the delivery went out but the call failed: resend guard holds it
+    h.wallet.listSentSupported = false; // and listSent can't find it, so it waits and resends later
+    await h.ticks(1);
+    for (let i = 0; i < 2; i++) await h.ticks(1, 60_000);
+    expect(h.store.getPayment(out.key)!.reply_ua).toBe(reply);
+  });
+});
+
 describe("sends refused before broadcast", () => {
   it("a delivery refused at proposal retries on normal backoff and sends once", async () => {
     const reply = fakeUa();

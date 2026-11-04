@@ -111,8 +111,10 @@ export class Engine {
       } else {
         known++;
         const p = store.getPayment(o.key)!;
-        if (p.confirmations !== o.confirmations || p.mined_height !== o.minedHeight) {
-          store.updatePayment(o.key, { confirmations: o.confirmations, mined_height: o.minedHeight, updated_at: now });
+        // Confirmations matter only until routing; a changed mined height (reorg) is always recorded.
+        // updated_at is deliberately left alone: it dates state changes, and the I7 purge keys off it.
+        if ((p.state === "seen" && p.confirmations !== o.confirmations) || p.mined_height !== o.minedHeight) {
+          store.updatePayment(o.key, { confirmations: o.confirmations, mined_height: o.minedHeight });
         }
       }
     }
