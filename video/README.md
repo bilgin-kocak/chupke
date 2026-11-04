@@ -1,5 +1,7 @@
 # The Chupke demo video
 
+Published at https://youtu.be/UON-xeeoFoY.
+
 A 91-second demo for the Free Society Hack:
 - **Scenes:** coded in Remotion.
 - **Voiceover:** ElevenLabs (voice "Aditya – Expressive & Natural Narrator", model `eleven_v4`).
