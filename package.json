@@ -12,8 +12,8 @@
     "test": "vitest run",
     "build:zingo": "scripts/build-zingo.sh",
     "wallet:smoke": "tsx scripts/wallet-smoke.ts",
-    "bitrefill:smoke": "NODE_USE_ENV_PROXY=1 tsx scripts/bitrefill-smoke.ts",
-    "bitrefill:buy-once": "NODE_USE_ENV_PROXY=1 tsx scripts/bitrefill-buy-once.ts"
+    "bitrefill:smoke": "NODE_USE_ENV_PROXY=1 NODE_OPTIONS=--disable-warning=UNDICI-EHPA tsx scripts/bitrefill-smoke.ts",
+    "bitrefill:buy-once": "NODE_USE_ENV_PROXY=1 NODE_OPTIONS=--disable-warning=UNDICI-EHPA tsx scripts/bitrefill-buy-once.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.6",

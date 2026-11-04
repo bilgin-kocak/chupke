@@ -4,15 +4,15 @@
     "kind": "test",
     "label": "Test gift card",
     "product_id": "test-gift-card-code",
-    "package_id": "PENDING-from-product-details",
-    "value_usd": 5
+    "package_id": "test-gift-card-code<&>10",
+    "value_usd": 10
   },
   {
     "sku": "test-fail",
     "kind": "test",
     "label": "Test gift card (always fails)",
     "product_id": "test-gift-card-code-fail",
-    "package_id": "PENDING-from-product-details",
-    "value_usd": 5
+    "package_id": "test-gift-card-code-fail<&>10",
+    "value_usd": 10
   }
 ]
