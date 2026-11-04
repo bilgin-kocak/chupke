@@ -22,5 +22,13 @@
     "product_id": "test-gift-card-code",
     "package_id": "test-gift-card-code<&>20",
     "value_usd": 20
+  },
+  {
+    "sku": "google-play-india-100",
+    "kind": "real",
+    "label": "Google Play India ₹100",
+    "product_id": "google-play-india",
+    "package_id": "google-play-india<&>100",
+    "value_usd": 1.14
   }
 ]
