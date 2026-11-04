@@ -1,8 +1,45 @@
 # Bitrefill integration feedback
 
-Dated friction log (IST), kept while building Chupke on Bitrefill REST v2. Each entry has three parts:
-what we tried, what happened, and what we expected. At M4 it gets cleaned up into "what worked" and
-"what didn't".
+Written while building Chupke (an autonomous purchasing worker on REST v2, plus an MCP catalog script) on
+Wed 4 Nov 2026. The summary comes first; the dated log, with what we tried, what happened and what we expected,
+is below.
+
+## What worked
+
+- **The core purchase flow works first time**:
+  - `POST /invoices` with `payment_method: "balance"` and `auto_pay: false`, then `POST /invoices/{id}/pay`,
+    then `GET /invoices/{id}`, then `GET /orders/{id}`.
+  - A test card went from create to delivered in about 1.2 s.
+  - Separating "create" (moves no money) from "pay" (moves money) is exactly what an exactly-once agent needs:
+    we save the invoice id, commit "paying", then pay, and on resume we look before paying again.
+- **Free test products** (`test-gift-card-code`, `-fail`) that are visible with `include_test_products=true`, with
+  nothing to enable on the key. They let us run the whole success and failure matrix on real APIs without spending.
+- **Clear auth errors** (`401 {"message":"Authorization token not found","status":"no_token"}`) and a short,
+  accurate Test products page.
+- **The hosted MCP server accepts the same API key.** `get-product-details` with `currency: "USD"` returns real USD
+  prices, which made MCP a good discovery and pricing layer in front of REST purchasing.
+- **The docs' `llms.txt` index** was easy for a coding agent to navigate (append `.md` to any page).
+
+## What didn't
+
+1. **Terminal states aren't fully documented.** A failing order ends at invoice `all_error` and order
+   `permanent_failure`. Neither is in the documented lists, so our worker polled a dead order until we noticed.
+   A complete table of invoice `status`, invoice `payment.status` and order `status` values, marked terminal or
+   not, would prevent silent hangs.
+2. **The two status fields are easy to confuse.** The documented invoice statuses (unpaid…complete) live on
+   `payment.status`, while the top-level `status` holds delivery states (`not_delivered`, `all_delivered`,
+   `all_error`). The `POST /pay` 200 response still showed `payment.status: "unpaid"`.
+3. **Redemption secrets ride along in status polls.** `GET /invoices/{id}` embeds every order's `redemption_info`,
+   and the OpenAPI calls `redemption_info` a string while it is really an object. We'd like an option to exclude
+   secrets from status polling, and a schema that matches.
+4. **Price units are unlabeled.** The account balance is in BTC, and prices are integers (13456 for $10), apparently
+   satoshis. A `price_unit` or USD amount in REST product details would help; MCP already provides it.
+5. **Test products are $10 minimum.** That uses up a $30/day guardrail in three test runs. A $1 test denomination
+   would help agent developers.
+6. **Small doc gaps:**
+   - Two live API hosts (`api.bitrefill.com` and `api-bitrefill.com`).
+   - Bearer versus Basic auth depends on the key type, which isn't obvious from the key.
+   - The MCP examples omit the required `intent` argument of `search-products`.
 
 ## Log
 
