@@ -105,6 +105,7 @@ These are all real transactions. The full list is in [docs/EVIDENCE.md](docs/EVI
 | refund: quote expired | CVTJ3622GM | [`4e45c0c2…13cb`](https://testnet.zcashexplorer.app/transactions/4e45c0c2a676c5e516ba21352d2ac08a90c2a206c3efdec2330faa75488413cb) |
 | split-mode delivery (view-only inbox watched, outbox sent) | 3J5T3XDWPH | [`6b8d1f3f…5f7d`](https://testnet.zcashexplorer.app/transactions/6b8d1f3f8ccf9990040d7ae18ed6a9daf6e41e6bd6b1764ab57f674c5f555f7d) |
 | overpayment returned after delivery (paid 0.015, price 0.01) | VTQ8KA58D0 | [`287e7afd…b532`](https://testnet.zcashexplorer.app/transactions/287e7afd27e258ed7e570a31d74d9cadd753a49a810289e886eda4a73729b532) |
+| final CI image as containers: own-address payment, then delivery | NS0Y84VNJD | [`7322bacd…cbcd`](https://testnet.zcashexplorer.app/transactions/7322bacd28477c93a43f634c2968d6cca9715c99afa9246a1743512f0a3fcbcd), [`4dedd1b9…ec2f`](https://testnet.zcashexplorer.app/transactions/4dedd1b9e913bf1d0b798a5cee03ed340b42e323b84de3bc9805847c2d44ec2f) |
 | payment to the order's own diversified address, then delivery (split mode) | Y94QVCAHVB | [`5204d07d…f38e`](https://testnet.zcashexplorer.app/transactions/5204d07dca328fda8bd5fe1cbd773dd0896579b17d4fa86b7c62b711d9fdf38e), [`cc7c9429…ca8f`](https://testnet.zcashexplorer.app/transactions/cc7c9429a396a1c979dedc54817d6b94740a7c2d940de69c2190f86d6d1fca8f) |
 
 **Bitrefill purchases use Bitrefill's free test products.** Every invoice above is a real REST v2 invoice

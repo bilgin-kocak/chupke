@@ -217,6 +217,24 @@ view-only inbox (`new_address o`, indexes 1–10), at about 7 s per tick.
   3. In neither case did anything fall back to a direct connection.
 - **Not done:** a run against the mixnet. That needs a host that can reach Nym's gateways (docs/DEPLOY.md, step 6).
 
+## Final image, live as containers (Wed 4 Nov 2026, 16:44–16:47 IST)
+
+The image CI built for the last code commit, `ghcr.io/bilgin-kocak/chupke:7a7cbc4…`, ran as the web and worker
+containers with the same sandbox-only override as the first Docker test. The bare worker and web were stopped first,
+so there was one worker per shop seed.
+
+- **Start:** the worker logged `zingoBuild: nakednet` and `walletMode: split`, and its first tick finished within
+  seconds.
+- **Order NS0Y84VNJD (test-ok):** the page paid pool address index 2 and showed "This payment address is used for this
+  order only."
+  1. Payment `7322bacd28477c93a43f634c2968d6cca9715c99afa9246a1743512f0a3fcbcd` at 16:45:18.
+  2. The view-only inbox saw it at 16:45:34 (0 confirmations); it was confirmed and accepted at 16:46:22.
+  3. Bitrefill invoice `f92ed76a-e882-4ec2-be9c-078aa5c4ed82` was created, paid and delivered within a second.
+  4. `memo_sent` at 16:46:28, delivery `4dedd1b9e913bf1d0b798a5cee03ed340b42e323b84de3bc9805847c2d44ec2f`.
+- **Buyer side:** `Chupke #NS0Y84VNJD delivered` / `Test gift card` / `Code: 46************57` (masked).
+- **Container logs:** 0 hits for `utest1`, `uviewtest`, `CHUPKE1` and `Code:`, and no warn or error lines.
+- The containers were then stopped. No worker runs in the sandbox, so a deploy elsewhere is the only one.
+
 ## Adapter rules as built (src/zcash/zingo.ts)
 
 - One zingo-cli process per call, serialized per data dir, with a 120 s timeout (SIGTERM, then SIGKILL).

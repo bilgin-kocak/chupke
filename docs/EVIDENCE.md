@@ -1,9 +1,10 @@
-Generated 2026-11-04 16:21 IST from the worker database. Explorer: https://testnet.zcashexplorer.app
+Generated 2026-11-04 16:47 IST from the worker database. Explorer: https://testnet.zcashexplorer.app
 
 ### Deliveries (code sent by shielded memo)
 
 | order | product | paid to | payment | Bitrefill invoice | delivery memo tx | at (IST) |
 | --- | --- | --- | --- | --- | --- | --- |
+| NS0Y84VNJD | Test gift card (test) | its own address | [`7322bacd28…`](https://testnet.zcashexplorer.app/transactions/7322bacd28477c93a43f634c2968d6cca9715c99afa9246a1743512f0a3fcbcd) | `f92ed76a-e882-4ec2-be9c-078aa5c4ed82` | [`4dedd1b9e9…`](https://testnet.zcashexplorer.app/transactions/4dedd1b9e913bf1d0b798a5cee03ed340b42e323b84de3bc9805847c2d44ec2f) | 2026-11-04 16:46 |
 | Y94QVCAHVB | Test gift card (test) | its own address | [`5204d07dca…`](https://testnet.zcashexplorer.app/transactions/5204d07dca328fda8bd5fe1cbd773dd0896579b17d4fa86b7c62b711d9fdf38e) | `b4cfa532-c32e-492b-a287-adc324b87aa9` | [`cc7c9429a3…`](https://testnet.zcashexplorer.app/transactions/cc7c9429a396a1c979dedc54817d6b94740a7c2d940de69c2190f86d6d1fca8f) | 2026-11-04 16:18 |
 | Q5S258G7D0 | Test gift card (test) | shop address | [`a4b16a2d23…`](https://testnet.zcashexplorer.app/transactions/a4b16a2d234e55130b9b41a1dc34ebe912e498b8dd74b400126cbbe9b945c95c) | `63020bd6-c553-4e3a-b8c8-cd6914d7e746` | [`cede8cd298…`](https://testnet.zcashexplorer.app/transactions/cede8cd298d0fb7390d60d644080789664f6e487e7ac6fefcec4ea84658a9c85) | 2026-11-04 16:05 |
 | VTQ8KA58D0 | Test gift card (test) | shop address | [`da8fef1ba3…`](https://testnet.zcashexplorer.app/transactions/da8fef1ba32e27c5b52427569c9787d85e62418c87207cf265c7ea7aee1e1b62) | `cb3594b7-5612-49a8-b117-54e2b77315f9` | [`fde411c81c…`](https://testnet.zcashexplorer.app/transactions/fde411c81c0cfb23466ce08ce37a4f38c0afb89e0a10bc8ad9b18b9e176e7033) | 2026-11-04 15:55 |
