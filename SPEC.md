@@ -239,6 +239,7 @@ M0 (now -> 13:30), then STOP and report:
   1. scripts/bitrefill-smoke.ts: ping, balance, search, product details (including test products).
   2. scripts/bitrefill-buy-once.ts --sku test-ok: create -> save id -> pay -> poll -> delivered -> print the masked redemption.
   3. Buy the real product only after my go-ahead, and record its invoice ID.
+  > 2026-11-04: SKIPPED by decision. The shop's Bitrefill balance is 0, and no public source says Bitrefill provides event credits. The real entry (google-play-india-100, $1.14, proposed by the MCP catalog) stays allowlisted and is refused with "Shop isn't selling this yet" while ALLOW_REAL_PURCHASES=false. All Bitrefill evidence uses the free test products.
 - Gate:
   - Both rails work -> both tracks.
   - Only Bitrefill works -> Agentic-only (same engine, with a signed webhook trigger instead of Zcash).
@@ -288,6 +289,7 @@ README.md must include:
 - A Bitrefill touchpoints paragraph: REST v2, the MCP catalog if built, and Docs llms.txt used by the coding agent; what was built vs reused.
 - The guardrails line from section 9.
 - An evidence table: testnet txids with explorer links, plus the real Bitrefill invoice ID.
+  > 2026-11-04: there is no real-product invoice (the purchase was skipped; see M0 Bitrefill step 3). The table lists the test-product invoice IDs instead.
 - The demo video and the public URL.
 - The merchant-of-record framing.
 - The next milestone (30 days), with links: a Bitrefill partner/reseller pilot on mainnet with batched ZEC->USDC top-ups, Nym for wallet traffic, per-order diversified addresses, and the shielded checkout and refund module open-sourced.

@@ -99,7 +99,13 @@ These are all real transactions. The full list is in [docs/EVIDENCE.md](docs/EVI
 | refund: duplicate payment | YMXHFE23J6 | [`34f0a31a…92d8`](https://testnet.zcashexplorer.app/transactions/34f0a31ac141357661471ddc9111bcedf2cdd076b50e59792f0b05dcad1a92d8) |
 | refund: quote expired | CVTJ3622GM | [`4e45c0c2…13cb`](https://testnet.zcashexplorer.app/transactions/4e45c0c2a676c5e516ba21352d2ac08a90c2a206c3efdec2330faa75488413cb) |
 | split-mode delivery (view-only inbox watched, outbox sent) | 3J5T3XDWPH | [`6b8d1f3f…5f7d`](https://testnet.zcashexplorer.app/transactions/6b8d1f3f8ccf9990040d7ae18ed6a9daf6e41e6bd6b1764ab57f674c5f555f7d) |
-| real Bitrefill purchase (Google Play India ₹100, $1.14) | – | *approved and allowlisted; waiting for event credits on the shop's Bitrefill balance* |
+
+**Bitrefill purchases use Bitrefill's free test products.** Every invoice above is a real REST v2 invoice
+(created, paid from the shop balance, delivered or failed), but no real-money gift card was bought: the shop's Bitrefill
+balance is 0 and none was needed for the demo. The real-product path is built and guarded:
+- Google Play India ₹100 ($1.14) was proposed by the MCP catalog and approved into the allowlist.
+- Ordering it is refused and refunded automatically ("Shop isn't selling this yet") while `ALLOW_REAL_PURCHASES=false`.
+- Enabling it takes Bitrefill balance and one setting.
 
 **Demo video:** *to be added* (script: [docs/DEMO.md](docs/DEMO.md)). **Public URL:** *to be added* ([docs/DEPLOY.md](docs/DEPLOY.md)).
 

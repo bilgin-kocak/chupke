@@ -28,6 +28,9 @@
 - **D4** Shop and buyer are zingo-cli wallets in separate data dirs. Each process uses one per-dir
   mutex and a cross-process lock file, so two zingo-cli processes never share a wallet directory.
 - **D5** SPEC.md stays verbatim in its first commit. Verification results are added later as notes.
+- **D6** (14:50 IST) The real-product purchase is skipped. The shop's Bitrefill balance is 0 and no source confirms
+  event credits. Google Play India ₹100 stays allowlisted as a `kind: "real"` entry that the guard refuses while
+  `ALLOW_REAL_PURCHASES=false`. That keeps the real-product path visible, and refused, in the demo.
 
 ## M1 end-to-end run (Wed 4 Nov 2026, IST)
 
