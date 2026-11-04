@@ -11,7 +11,10 @@ This page answers four questions about what Chupke reveals. Naming a gap costs n
   fetches it from Bitrefill at send time, holds it in memory and writes it straight into an encrypted memo
   (invariant I6). Invoice responses from Bitrefill embed the code too, and Chupke strips it as soon as it parses them.
 - **The web server holds no keys.** It has no wallet, no viewing key and no Bitrefill key. In Docker it gets no `.env`
-  and never mounts the wallets volume.
+  and never mounts the wallets volume. On Railway, where both run in one container (docs/DEPLOY.md), the web runs as a
+  separate unprivileged user with only its public variables and can't read the wallet directory. That is a weaker
+  boundary than two containers: an attacker who took over the web and then gained root in the container would reach
+  the wallets.
 - **No accounts and no email.** The only thing tying a buyer to an order is the reply address they choose to put in
   the memo, and a fresh address per order is recommended.
 - **A fresh shop address for every order.** Each order page shows its own diversified address of the shop wallet
