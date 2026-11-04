@@ -1,10 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { paymentKey } from "../src/zcash/wallet.js";
-import { minedHeightFromStatus, parseBalanceTotal } from "../src/zcash/zingo.js";
+import { minedHeightFromStatus, parseBalanceTotal, sendNeverRan } from "../src/zcash/zingo.js";
 
 const TXID = "2683a6a85de9b5ac7861bd48ca2a7a87c36f54e6be8e9d0b2245d777b7fd6046";
 
 describe("zingo-cli output parsing", () => {
+  it("knows which send failures broadcast nothing", () => {
+    expect(sendNeverRan("Error: Propose send error: Insufficient balance: 5000 < 10000")).toBe(true);
+    // The Nym build refusing to go online (seen live when nym-proxy can't start), before any sync or send.
+    expect(
+      sendNeverRan(
+        "Error: Mixnet Mode is required for a connected session: Mixnet Mode could not start. | caused by: the nym proxy at 'nym-proxy' did not start",
+      ),
+    ).toBe(true);
+    expect(sendNeverRan("Error: transmission failed: connection reset")).toBe(false);
+    expect(sendNeverRan("")).toBe(false);
+  });
+
   it("reads the mined height from a note status", () => {
     expect(minedHeightFromStatus("confirmed at block height 4581215")).toBe(4581215);
     expect(minedHeightFromStatus("mempool at block height 4581216")).toBeNull();

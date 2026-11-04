@@ -159,6 +159,15 @@ const SendOut = z.looseObject({ txids: z.array(z.string().regex(/^[0-9a-f]{64}$/
 const UfvkOut = z.looseObject({ ufvk: z.string(), birthday: z.number().int() });
 
 /**
+ * Error text proving a quicksend built and broadcast nothing: a refusal at the proposal stage, or
+ * (Nym build) a session that never went online because Mixnet Mode couldn't start. zingo-cli raises
+ * the latter while starting the session, before its pre-send sync, so the send never ran.
+ */
+export function sendNeverRan(errorText: string): boolean {
+  return /Propose send error|Insufficient balance|Mixnet Mode is required for a connected session/.test(errorText);
+}
+
+/**
  * `balance` is not JSON: it prints "total_<pool>_balance: 100_000_000" lines (underscore digit
  * separators) for ironwood, orchard, sapling and transparent. Returns the sum in zatoshis.
  */
@@ -373,8 +382,8 @@ export class ZingoWallet implements ZcashWallet {
             .filter((l) => /^\s*(Error|error|caused by)/.test(l))
             .join(" | ");
           const message = `zingo-cli ${name} exited ${code}: ${scrub(why).slice(0, 300) || "no error text"}`;
-          // A failure at the proposal stage means nothing was built or broadcast.
-          if (name === "quicksend" && /Propose send error|Insufficient balance/.test(why)) {
+          // Nothing was built or broadcast: safe to retry without the look-before-resend guard.
+          if (name === "quicksend" && sendNeverRan(why)) {
             return reject(new SendNotBroadcastError(name, code, message));
           }
           return reject(new WalletCommandError(name, code, message));
