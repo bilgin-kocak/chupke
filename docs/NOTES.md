@@ -29,6 +29,30 @@
   mutex and a cross-process lock file, so two zingo-cli processes never share a wallet directory.
 - **D5** SPEC.md stays verbatim in its first commit. Verification results are added later as notes.
 
+## M1 end-to-end run (Wed 4 Nov 2026, IST)
+
+I ran the worker and web locally (`npm run worker`, `npm run web`), created a `test-ok` order through
+`POST /orders` with the buyer wallet's UA as the reply address, then ran
+`npm run buyer:pay -- --order YMXHFE23J6`, which reads the ZIP 321 link from the order page.
+There was no manual step after the payment. The event trail (from the `events` table, IST):
+
+| time | event | detail |
+| --- | --- | --- |
+| 13:31:02 | order_created | test-ok, 1,000,000 zat (0.01 TAZ) |
+| 13:31:02 | (buyer pays) | txid `8324da93e32da346653d98c72904a720ed3eb3470931ccac0ac49ebbd17c902d` |
+| 13:31:15 | payment_seen | in the mempool, 0 conf |
+| 13:32:25 | payment_confirmed | 1 conf at height 4581381 |
+| 13:32:25 | accepted | guard passed |
+| 13:32:26 | invoice_created → paying → paid → delivered | Bitrefill invoice `0dbb77e0-3573-48bd-abd1-39a6e57b5caf`, all inside one tick |
+| 13:32:32 | memo_sent | delivery txid `433da69605a37eec4f9a72ab678602aa5a7f59bd80ca590374b0808d0ba0f576` |
+
+- `npm run buyer:inbox -- --order YMXHFE23J6` showed the memo `Chupke #YMXHFE23J6 delivered` /
+  `Test gift card` / `Code: 37…24 (16 chars)` (masked) arriving in the buyer wallet.
+- It took about 94 s from payment to code sent; most of that was waiting for one block.
+- Leak scan of `data/logs/worker.log`, `data/logs/web.log` and every `events.detail`: 0 hits for either UA,
+  `CHUPKE1`, `Code:` and `utest1`.
+- A tick takes about 6 s, dominated by `--waitsync` (about 2 s) and three zingo-cli reads of about 1 s each.
+
 ## Adapter rules as built (src/zcash/zingo.ts)
 
 - One zingo-cli process per call, serialized per data dir, with a 120 s timeout (SIGTERM, then SIGKILL).
