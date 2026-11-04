@@ -36,8 +36,9 @@ Judges score "Works" against the pitch, so every clause gets something visible o
    "…refund: Over the per-order limit / 0.02 TAZ returned. No purchase was made."
 7. **Never twice (20 s).** On the dashboard, show the duplicate payment row with the `duplicate_skipped` event and its
    refund, and the `restart_ingest` event: "a full rescan re-saw every payment and bought nothing new."
-8. **Privacy (10 s).** Show the order page's *Who can see what* box. "Addresses are deleted an hour after the order ends,
-   and codes are never stored."
+8. **Privacy (10 s).** Point at "This payment address is used for this order only" under the QR, then show the
+   *Who can see what* box. "Every order gets its own shop address. Reply addresses are deleted an hour after the order
+   ends, and codes are never stored."
 9. **Close (10 s).** "The buyer's ZEC pays Chupke; Chupke pays Bitrefill from its own balance: event credits today,
    batched ZEC to USDC in production. Built on Zcash testnet and Bitrefill REST v2 plus MCP."
 

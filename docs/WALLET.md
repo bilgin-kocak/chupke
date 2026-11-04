@@ -211,3 +211,17 @@ on-chain check was done with lightwalletd `GetTransaction`.
   field, and zingolib's `BasicNoteSummary` carries `TODO: add key id with address index`. Chupke therefore still
   matches payments to orders by memo.
 
+### The Nym build (`ZINGO_BUILD=nym`), 16:30 IST
+Built locally from the same pinned commit and patch, beside the nakednet binary (`CARGO_TARGET_DIR` and `ZINGO_BIN_DIR`
+pointed elsewhere, so the running worker's `bin/zingo-cli` was untouched). CI builds the same thing as the `:nym` image.
+- **What it is:** upstream's default build. A connected session runs Mixnet Mode unconditionally: transaction broadcasts
+  and price fetches go over Nym through a `nym-proxy` child (a SOCKS5 proxy), sync alone goes direct to lightwalletd,
+  and nothing falls back to a direct broadcast (zingo-cli 0.5.0 CHANGELOG). `nym-proxy` comes from a second cargo build,
+  `-p zingo-netutils --features nym --bin nym-proxy`, and is installed beside zingo-cli, the first place it looks.
+- **Offline it reads the same wallet files.** On a throwaway copy of the buyer wallet, `--offline addresses` gave the
+  same primary address as the nakednet build, and `--offline notes all` listed the same 26 notes.
+- **It fails closed.** Going online with no `nym-proxy` available exits 1 at once, before any sync:
+  `Error: Mixnet Mode is required for a connected session: Mixnet Mode could not start.` The adapter now treats this
+  error on a send as "never broadcast" (`sendNeverRan`), because zingo-cli raises it while starting the session, before
+  its pre-send sync. The worker then retries quickly instead of waiting out the resend guard.
+

@@ -3,6 +3,8 @@ name: ci
 on:
   push:
     branches: ["**"]
+    # Docs aren't copied into the image, so a docs-only push neither tests nor rebuilds anything.
+    paths-ignore: ["**.md", "docs/**"]
   workflow_dispatch:
 
 # Queue instead of cancelling, so the long Docker build always finishes (only the newest pending run is kept).

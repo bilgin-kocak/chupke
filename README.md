@@ -42,8 +42,9 @@ with refunds) and Lane 2's ending (delivery in the buyer's own encrypted inbox).
 
 1. The buyer picks a product on the Chupke page and pastes a fresh shielded reply address (`utest1…`).
    The address's Bech32m checksum is verified, so typos are caught before any money moves.
-2. The page shows a ZIP 321 QR: the order's own shop address (a fresh diversified address, never shown for any other
-   order), the TAZ price, and the memo `CHUPKE1 o=<orderId> r=<replyUA>`. The memo is also shown with a copy button.
+2. The page shows a ZIP 321 QR: the order's own shop address (a fresh diversified address that no other order gets, or
+   the shop's main address if none is ready), the TAZ price, and the memo `CHUPKE1 o=<orderId> r=<replyUA>`. The memo
+   is also shown with a copy button.
 3. The buyer pays from any testnet wallet.
 4. The worker sees the payment, waits for confirmation, runs the guard, buys on Bitrefill, and waits until every
    Bitrefill order says `delivered`.

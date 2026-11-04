@@ -71,6 +71,12 @@ docker compose logs worker | grep -E 'worker started|restoring|inbox'
 
 Then remove `ZINGO_SEED` from `.env`. The wallet file now lives in the `chupke-wallets` volume.
 
+**Moving a shop that already took orders?** Bring its database (`data/db`, or the `chupke-db` volume) along with the
+seed. A wallet restored from the seed derives per-order addresses from index 1 again, and only the database knows
+which ones were already handed out. With the old database the worker skips those; with a fresh one the new machine
+can show an address an earlier deployment already gave another buyer. Payments would still work, because they are
+matched by memo.
+
 ## 4. Public URL
 
 Use either your own domain, with automatic HTTPS from Caddy (set `DOMAIN` first):
@@ -97,6 +103,32 @@ Put the URL in `PUBLIC_BASE_URL` and run `docker compose up -d web`, which recre
 - `https://<url>/dashboard` (user `chupke`, password `DASHBOARD_PASSWORD`) shows balances, caps and events.
 - From a phone: open the URL, pick **Test gift card**, paste a fresh address from your testnet wallet, pay the QR.
   The status goes seen → confirmed → buying → delivered → sent, and the code arrives in your wallet's memos.
+
+## 6. Optional: the Nym image
+
+CI also publishes `ghcr.io/bilgin-kocak/chupke:nym`. It is the same app with upstream zingo-cli's default build, where
+every transaction broadcast goes over the Nym mixnet and fails closed rather than going direct. Sync stays a direct
+connection to lightwalletd, so the server still sees the worker's IP while it syncs, but not which transactions it
+sends. `nym-proxy`, the mixnet client zingo-cli starts when it goes online, ships beside zingo-cli in the image.
+
+Add these to `.env`, then pull and start as in step 3:
+
+```dotenv
+CHUPKE_IMAGE=ghcr.io/bilgin-kocak/chupke:nym
+TICK_MS=30000
+```
+
+```bash
+docker compose logs worker | grep 'worker started'
+```
+
+That line should show `"zingoBuild":"nym"`.
+
+**Status:** CI builds this image from the same pinned zingolib commit. It has not been run against the mixnet,
+because the sandbox Chupke was built in can't reach Nym's gateways. Every online zingo-cli call (each sync and each
+send) starts a mixnet client, so ticks get slower; that is why `TICK_MS` is raised above. If the mixnet can't be
+reached, a send fails instead of falling back to a direct connection. The worker then treats it like any send that
+might have gone out: it checks its own sent memos after the 3-minute guard before trying again.
 
 ## Operations
 
