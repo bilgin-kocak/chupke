@@ -34,6 +34,23 @@ else
   echo "build-zingo: CA patch applied"
 fi
 
+# zingolib's build.rs downloads the Sapling proving parameters with a webpki-only TLS client,
+# which fails behind a TLS-re-terminating proxy. Pre-fetch them with curl (honors the system CA
+# and HTTPS_PROXY) into the default cache; zcash_proofs then finds them and skips the download.
+PARAMS_DIR="${ZCASH_PARAMS_DIR:-$HOME/.zcash-params}"
+fetch_param() { # name, expected BLAKE2b-512, part count
+  local name="$1" want="$2" parts="$3" tmp
+  if [ -f "$PARAMS_DIR/$name" ] && [ "$(b2sum "$PARAMS_DIR/$name" | cut -d' ' -f1)" = "$want" ]; then return; fi
+  mkdir -p "$PARAMS_DIR"; tmp="$PARAMS_DIR/$name.tmp"; : > "$tmp"
+  for i in $(seq 1 "$parts"); do
+    curl -fsSL "https://download.z.cash/downloads/$name.part.$i" >> "$tmp"
+  done
+  [ "$(b2sum "$tmp" | cut -d' ' -f1)" = "$want" ] || { echo "build-zingo: bad hash for $name" >&2; rm -f "$tmp"; exit 1; }
+  mv "$tmp" "$PARAMS_DIR/$name"; echo "build-zingo: fetched $name"
+}
+fetch_param sapling-spend.params 8270785a1a0d0bc77196f000ee6d221c9c9894f55307bd9357c3f0105d31ca63991ab91324160d8f53e2bbd3c2633a6eb8bdf5205d822e7f3f73edac51b2b70c 2
+fetch_param sapling-output.params 657e3d38dbb5cb5e7dd2970e8b03d69b4787dd907285b5a7f0790dcc8072f60bf593b32cc2d1c030e00ff5ae64bf84c5c3beb84ddc841d48264b4a171744d028 2
+
 case "$ZINGO_BUILD" in
   nakednet) FEATURE_ARGS=(--no-default-features --features nakednet-test-mode) ;;
   nym) FEATURE_ARGS=() ;;
