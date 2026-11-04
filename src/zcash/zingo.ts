@@ -198,6 +198,15 @@ export class ZingoWallet implements ZcashWallet {
     await this.run("sync", "wait", ["height"], { timeoutMs });
   }
 
+  /**
+   * Full rescan: drop every note, coin and transaction, then sync again from the birthday.
+   * (`rescan` itself restarts sync inside one process, which one-shot mode would abandon.)
+   */
+  async rescan(timeoutMs = 600_000): Promise<void> {
+    await this.run("clear", "nosync", ["clear"]);
+    await this.run("sync", "wait", ["height"], { timeoutMs });
+  }
+
   async primaryAddress(): Promise<string> {
     const list = AddressesOut.parse(extractJson(await this.run("addresses", "offline", ["addresses"])));
     const first = list.find((a) => a.address_index === 0) ?? list[0];

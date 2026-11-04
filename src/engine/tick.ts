@@ -25,6 +25,7 @@ export class Engine {
   private ingestFromHeight = 0;
   private lastBitrefillBalanceAt = Number.NEGATIVE_INFINITY;
   private lastError = "";
+  private firstIngestDone = false;
 
   constructor(private readonly d: EngineDeps) {}
 
@@ -80,6 +81,7 @@ export class Engine {
     const outputs = await wallet.listIncoming();
     const now = this.d.now();
     let added = 0;
+    let known = 0;
     for (const o of outputs) {
       if (o.minedHeight !== null && o.minedHeight < this.ingestFromHeight) continue;
       const parsed = parsePaymentMemo(o.memo);
@@ -107,11 +109,17 @@ export class Engine {
         added++;
         store.addEvent(now, "payment_seen", { orderId: parsed?.orderId ?? null, paymentKey: o.key }, `${o.amountZat} zat, ${o.pool}, ${o.confirmations} conf`);
       } else {
+        known++;
         const p = store.getPayment(o.key)!;
         if (p.confirmations !== o.confirmations || p.mined_height !== o.minedHeight) {
           store.updatePayment(o.key, { confirmations: o.confirmations, mined_height: o.minedHeight, updated_at: now });
         }
       }
+    }
+    if (!this.firstIngestDone) {
+      // After a restart or rescan every output comes back; I1 makes the known ones no-ops.
+      this.firstIngestDone = true;
+      store.addEvent(now, "restart_ingest", {}, `${known} known output(s) seen again and skipped (INSERT OR IGNORE), ${added} new`);
     }
     return added;
   }
