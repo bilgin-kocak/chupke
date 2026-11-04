@@ -141,6 +141,8 @@ export interface BitrefillClientOptions {
   /** /ping: 1 request per 3 seconds upstream. */
   pingLimiter?: Acquirer;
   onEvent?: (e: BitrefillEvent) => void;
+  /** Jitter source (tests pass a fixed one). */
+  random?: () => number;
   sleep?: Sleep;
   /** Automatic retries for idempotent GETs on 429/5xx/network errors. POSTs never retry here. */
   getRetries?: number;
@@ -160,6 +162,7 @@ export class BitrefillClient {
   private readonly sleep: Sleep;
   private readonly getRetries: number;
   private readonly timeoutMs: number;
+  private readonly random: () => number;
 
   constructor(opts: BitrefillClientOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
@@ -174,6 +177,7 @@ export class BitrefillClient {
     this.sleep = opts.sleep ?? realSleep;
     this.getRetries = opts.getRetries ?? 3;
     this.timeoutMs = opts.timeoutMs ?? 30_000;
+    this.random = opts.random ?? Math.random;
   }
 
   ping(): Promise<unknown> {
@@ -255,7 +259,7 @@ export class BitrefillClient {
         res = await this.fetchImpl(url, init);
       } catch (err) {
         if (retry && attempt < this.getRetries) {
-          await this.sleep(backoffMs(attempt));
+          await this.sleep(backoffMs(attempt, this.random));
           continue;
         }
         const why = err instanceof Error ? err.name : "error";
@@ -263,7 +267,10 @@ export class BitrefillClient {
       }
 
       if (res.status === 429) {
-        const waitMs = parseRetryAfter(res.headers.get("retry-after")) ?? backoffMs(attempt);
+        // Honor Retry-After (plus up to 0.5 s of jitter so concurrent retries don't collide again);
+        // without it, back off 5/10/20/60 s with jitter.
+        const retryAfter = parseRetryAfter(res.headers.get("retry-after"));
+        const waitMs = retryAfter !== null ? retryAfter + Math.floor(this.random() * 500) : backoffMs(attempt, this.random);
         this.onEvent({ type: "rate_limited", method, path: template, waitMs, attempt });
         await res.body?.cancel();
         if (retry && attempt < this.getRetries) {
@@ -283,7 +290,7 @@ export class BitrefillClient {
 
       if (!res.ok) {
         if (retry && res.status >= 500 && attempt < this.getRetries) {
-          await this.sleep(backoffMs(attempt));
+          await this.sleep(backoffMs(attempt, this.random));
           continue;
         }
         const body = (json ?? {}) as { message?: unknown; error_code?: unknown; status?: unknown };

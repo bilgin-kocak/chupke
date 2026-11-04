@@ -24,6 +24,7 @@ function client(fetchImpl: typeof fetch, events: BitrefillEvent[] = [], apiKey?:
     productLimiter: noLimit,
     pingLimiter: noLimit,
     sleep: async () => undefined,
+    random: () => 0,
     onEvent: (e) => events.push(e),
   });
 }
@@ -56,6 +57,25 @@ describe("BitrefillClient", () => {
     const inv = await client(f.impl, events).getInvoice("inv_1");
     expect(allOrdersDelivered(inv)).toBe(true);
     expect(events).toEqual([{ type: "rate_limited", method: "GET", path: "/invoices/{id}", waitMs: 2000, attempt: 0 }]);
+  });
+
+  it("adds up to 0.5 s of jitter on top of Retry-After and gives up after the retry budget", async () => {
+    const events: BitrefillEvent[] = [];
+    const waits: number[] = [];
+    const f = fakeFetch(Array.from({ length: 4 }, () => ({ status: 429, headers: { "retry-after": "3" } })));
+    const c = new BitrefillClient({
+      baseUrl: "https://api.example.test/v2",
+      fetchImpl: f.impl,
+      pingLimiter: noLimit,
+      sleep: async (ms) => void waits.push(ms),
+      random: () => 0.5,
+      onEvent: (e) => events.push(e),
+    });
+    const err = (await c.ping().catch((e: unknown) => e)) as BitrefillError;
+    expect(err).toMatchObject({ status: 429, errorCode: "rate_limited", retryAfterMs: 3250 });
+    expect(f.calls).toHaveLength(4); // first try + 3 retries
+    expect(waits).toEqual([3250, 3250, 3250]);
+    expect(events.map((e) => e.attempt)).toEqual([0, 1, 2, 3]);
   });
 
   it("never retries the money-moving pay call", async () => {

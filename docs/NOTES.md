@@ -148,6 +148,40 @@ first, so there was one worker. Order VTQ8KA58D0 (price 0.01 TAZ) was paid **0.0
 - The existing database was migrated in place: six `excess_*` columns were added at worker start.
 - The worker log has 0 hits for the buyer UA, `CHUPKE1`, `Code:` and the overpayment memo text.
 
+## Hard crash (kill -9) during a delivery send, live (Wed 4 Nov 2026, 16:00–16:05 IST)
+
+Order Q5S258G7D0 was paid (`a4b16a2d234e55130b9b41a1dc34ebe912e498b8dd74b400126cbbe9b945c95c`). A driver polled the
+database and sent SIGKILL to the worker's node processes the instant `delivery_sending` and `send_started_at` were
+committed. The kill landed 40 ms into `wallet.send`, and the zingo-cli child was left alone.
+
+- **The orphaned zingo-cli** died by itself on its next write to the dead stderr pipe (SIGPIPE). It was still in its
+  pre-send sync, so nothing had been broadcast.
+- **The lock file** still listed both PIDs, the worker's and the child's. Both were dead, so the restarted worker took
+  the lock. It would have waited if the child had still been running, which is the new lock rule (commit "Wallet lock
+  waits for an orphaned zingo-cli child").
+- **The restarted worker resumed `delivery_sending`:**
+  1. `listSent` had no `#Q5S258G7D0 delivered` memo.
+  2. It waited out the 3-minute resend guard (16:01:55 → 16:04:59), logged `delivery_resend`, and sent once.
+  3. Result: `memo_sent` at 16:05:06, delivery `cede8cd298d0fb7390d60d644080789664f6e487e7ac6fefcec4ea84658a9c85`.
+- **Outcome:** exactly one Bitrefill invoice (`63020bd6-c553-4e3a-b8c8-cd6914d7e746`, no second purchase) and exactly
+  one delivery memo in the buyer wallet. The crash cost three minutes of delay and nothing else.
+
+## Live rate-limit (429) check (Wed 4 Nov 2026, 16:00 IST)
+
+`/ping` is documented at 1 request per 3 s, so it is a free way to provoke a real 429. A throwaway script did it; no
+money moved.
+
+- **Raw, back to back:** ping 1 gave `200` (`ratelimit-remaining: 0`). Pings 2–4 gave `429` with `Retry-After` of 3, 2
+  and 3 seconds.
+- **The client, with its 3.1 s `/ping` spacing switched off and three pings fired at once:** results were fulfilled,
+  rejected, fulfilled in 7.3 s. It emitted 7 `rate_limited` events, each waiting the server's `Retry-After`
+  (3000/3000/2000 ms on attempt 0, then 1000–3000 ms). The rejected call stopped after its 3-retry budget with
+  `BitrefillError(429, "rate_limited")`. It did not loop.
+- **What changed:** two of the retries woke on the same tick and collided again. The client now adds up to 0.5 s of
+  random jitter on top of `Retry-After` (test: "adds up to 0.5 s of jitter on top of Retry-After").
+- In normal running none of this fires: `/ping` is spaced 3.1 s, the general limiter allows 55 per 10 minutes and the
+  product limiter 55 per minute (Bitrefill allows 60), and the money-moving POSTs never retry automatically.
+
 ## Adapter rules as built (src/zcash/zingo.ts)
 
 - One zingo-cli process per call, serialized per data dir, with a 120 s timeout (SIGTERM, then SIGKILL).

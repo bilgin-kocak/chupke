@@ -19,6 +19,8 @@ is below.
 - **The hosted MCP server accepts the same API key.** `get-product-details` with `currency: "USD"` returns real USD
   prices, which made MCP a good discovery and pricing layer in front of REST purchasing.
 - **The docs' `llms.txt` index** was easy for a coding agent to navigate (append `.md` to any page).
+- **Rate limits are enforced with a real `Retry-After`.** Going over the `/ping` limit gave `429` with
+  `Retry-After: 2`–`3` and `ratelimit-remaining`, so a client can wait exactly as long as it needs to.
 
 ## What didn't
 
@@ -116,6 +118,14 @@ is below.
 - **Expected:** examples that include the required `intent`. Otherwise this is a great fit: MCP for discovery and
   USD pricing, and REST v2 for the exact `package_id` the worker buys with. Our `scripts/mcp-catalog.ts`
   combines the two and proposes allowlist entries for a human to approve.
+
+### 2026-11-04 16:00: rate limits, live
+- **Tried:** four raw `GET /ping` back to back, then three concurrent pings through our client with its own spacing
+  switched off.
+- **Happened:** `200`, then `429` three times with `Retry-After` 3, 2 and 3 s (`ratelimit-remaining: 0` throughout).
+  Our client waited each `Retry-After`, retried, and gave up cleanly after 3 retries on the call that kept losing.
+- **Expected:** this is what we hoped for. A `ratelimit-reset` header or a documented header list would let a
+  client plan ahead instead of reacting, and a note on whether the 60-per-10-minutes limit is per key or per IP.
 
 ### 2026-11-04 12:56: redemption data inside invoices
 - **Tried:** polling `GET /invoices/{id}` for delivery status.
