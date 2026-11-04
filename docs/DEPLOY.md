@@ -137,32 +137,34 @@ Railway can't share a volume between two services, so there Chupke runs as one s
 variables the web reads, so the web still can't read the wallets or the worker's secrets. If either process exits,
 the other is stopped and Railway restarts the container.
 
-1. A service from the image `ghcr.io/bilgin-kocak/chupke:latest`, with a volume mounted at `/data`.
-2. Settings: start command `node_modules/.bin/tsx scripts/railway-start.ts`, draining time 120 seconds (so a stop
-   lets the worker finish its tick), healthcheck path `/healthz`.
+1. A service from the image `ghcr.io/bilgin-kocak/chupke:<commit sha>`, with a volume mounted at `/data`. Pin a
+   commit tag rather than `:latest`: CI pushes `:latest` from every branch.
+2. Settings, Deploy: custom start command `node_modules/.bin/tsx scripts/railway-start.ts`, healthcheck path
+   `/healthz`, and a draining time of 120 seconds so a stop lets the worker finish its tick.
 3. Variables: `RAILWAY_RUN_UID=0` (Railway volumes are owned by root; the launcher drops to `chupke` for the web),
    `PORT=8080`, `WALLET_MODE=split`, `ALLOW_REAL_PURCHASES=false`, `PUBLIC_BASE_URL=https://<domain>`, and the
-   secrets from step 2: `BITREFILL_API_KEY`, `ZINGO_SEED`, `WALLET_BIRTHDAY`, `DASHBOARD_PASSWORD`. Remove
-   `ZINGO_SEED` after the first start.
+   secrets from step 2: `BITREFILL_API_KEY`, `ZINGO_SEED`, `WALLET_BIRTHDAY`, and optionally `DASHBOARD_PASSWORD`
+   (without it `/dashboard` is off). Remove `ZINGO_SEED` after the first start.
 4. Networking: generate a domain for port 8080, then check `/healthz` as in step 5.
 
-With the CLI, from the repo root:
+Most of it works from the CLI, from the repo root:
 
 ```bash
 railway init -n chupke
-railway add --service chupke --image ghcr.io/bilgin-kocak/chupke:latest
+railway add --service chupke --image ghcr.io/bilgin-kocak/chupke:<commit sha>
 railway service link chupke
 railway volume add --mount-path /data
-railway environment edit \
-  --service-config chupke deploy.startCommand "node_modules/.bin/tsx scripts/railway-start.ts" \
-  --service-config chupke deploy.healthcheckPath "/healthz" \
-  --service-config chupke deploy.drainingSeconds 120
-railway variables --set RAILWAY_RUN_UID=0 --set PORT=8080 --set WALLET_MODE=split --set ALLOW_REAL_PURCHASES=false
+railway variables --skip-deploys --set RAILWAY_RUN_UID=0 --set PORT=8080 --set WALLET_MODE=split --set ALLOW_REAL_PURCHASES=false
 railway domain --port 8080
 ```
 
-Type the secrets into the service's Variables tab in the dashboard rather than on a command line.
+Set step 2 in the dashboard: `railway environment edit --service-config …` (CLI 4.37.2) answered "No changes to
+apply" and changed nothing. Type the secrets into the service's Variables tab rather than on a command line.
 The one-worker-per-seed rule at the top applies here too, and a volume keeps the service at one replica.
+
+The first Railway deploy (4 Nov, image `8c7e8ee`) logged `started … webUid=10001` from the launcher, the web
+listening on 8080, the shop wallet restored from the seed and the view-only inbox created from its UFVK.
+After `ZINGO_SEED` was removed, a redeploy started from the wallet on the volume, with the same ingest height.
 
 ## Operations
 

@@ -121,7 +121,7 @@ balance is 0 and none was needed for the demo. The real-product path is built an
 - Ordering it is refused and refunded automatically ("Shop isn't selling this yet") while `ALLOW_REAL_PURCHASES=false`.
 - Enabling it takes Bitrefill balance and one setting.
 
-**Demo video:** *to be added* (script: [docs/DEMO.md](docs/DEMO.md)). **Public URL:** *to be added* ([docs/DEPLOY.md](docs/DEPLOY.md)).
+**Demo video:** *to be added* (script: [docs/DEMO.md](docs/DEMO.md)). **Public URL:** https://chupke-production.up.railway.app (testnet, on Railway; [docs/DEPLOY.md](docs/DEPLOY.md)).
 
 ## Technology and design decisions
 
