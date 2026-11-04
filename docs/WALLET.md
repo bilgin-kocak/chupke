@@ -186,6 +186,13 @@ still to be checked. The adapter doesn't need them.
   exits. `ZingoWallet.rescan()` therefore runs `--nosync clear`, which drops every note, coin and
   transaction, and then `--waitsync height`, which syncs again from the birthday.
 
+### Restore from seed (the deploy path), 14:50 IST
+- `ZingoWallet.initWallet({ seed, birthday })` is what the worker runs on a fresh machine. It passes the seed
+  in `ZINGO_SEED` (never on the command line), with `--birthday 4581118 --waitsync`. The restore into a throwaway
+  directory took 4.1 s.
+- Result: the same primary address as the shop wallet, the same 9 received outputs with identical payment keys,
+  and an equal total balance (102,517,000 zat). The copy, which holds the seed, was then deleted.
+
 ### VERIFY 5 answer
 A send to a `utest1` address is accepted on NU7 testnet. Both test transactions were mined in Ironwood
 outputs, and their explorer links are listed above. The explorer itself 403s from the sandbox; the

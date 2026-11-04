@@ -67,6 +67,7 @@ Payment memo (ASCII, max 512 bytes): "CHUPKE1 o=<orderId> r=<replyUA>". Strict r
 Delivery memo (max 512 bytes), one item per line: "Chupke #<orderId> delivered", "<label>", "Code: <code>", "PIN: <pin>" (if any), "Redeem: <link>" (only if it fits). Never truncate the code or PIN; drop the link first.
 Refund memo, one item per line: "Chupke #<orderId> refund: <reason text>", then "<amount> TAZ returned. No purchase was made." (or "The purchase failed; nothing was bought."), then "ref <first 8 chars of paying txid>". The tags "#<orderId> delivered" and "ref <txid8>" let the worker find its own sends after a crash.
 ZIP 321: zcash:<shopUA>?amount=<ZEC, max 8 decimals, no exponent>&memo=<base64url(memo), no padding>&message=<urlencoded "Chupke order <id>">. VERIFY that the buyer wallet pre-fills the memo. The page also shows the memo text with a copy button.
+> 2026-11-04: the URI format is unit-tested and the CLI buyer pays from it (scripts/buyer-pay.ts parses the page's link). The GUI pre-fill is still PENDING: Zingo PC (testnet, Ironwood, and a `zcash:` handler for ZIP 321 per its README) is the chosen wallet; record the result here after the first scan.
 Price: price_zat = round(value_usd x DEMO_ZAT_PER_USD). The page says "Demo rate: testnet coins have no value."
 
 6. ZCASH WALLET ADAPTER
