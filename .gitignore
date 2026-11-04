@@ -3,3 +3,7 @@ data/
 wallets/
 node_modules/
 *.db
+bin/
+coverage/
+*.db-wal
+*.db-shm
