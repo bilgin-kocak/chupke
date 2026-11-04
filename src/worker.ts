@@ -59,6 +59,7 @@ const engine = new Engine({
     invoicePollMs: 8_000,
     ingestFromHeight: cfg.INGEST_FROM_HEIGHT,
     bitrefillBalanceEveryMs: cfg.BITREFILL_BALANCE_EVERY_SEC * 1000,
+    addressPoolSize: cfg.ADDRESS_POOL_SIZE,
   },
 });
 
@@ -103,7 +104,7 @@ async function loop(): Promise<void> {
   ticking = true;
   try {
     const r = await engine.tick();
-    const busy = r.ingested + r.routed + r.advanced + r.refunds + r.overpayRefunds + r.expired > 0;
+    const busy = r.ingested + r.routed + r.advanced + r.refunds + r.overpayRefunds + r.expired + r.poolAdded > 0;
     log[r.errors.length ? "warn" : busy ? "info" : "debug"]({ ...r }, "tick");
   } catch (e) {
     log.error({ err: e instanceof Error ? e.message : String(e) }, "tick crashed");

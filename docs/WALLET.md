@@ -97,6 +97,7 @@ separate Ironwood key line), while `balance` and `notes` report an `ironwood` po
 | wallet's view of height | `--offline height` | JSON `{"height": N}` (as of the wallet's last server request) |
 | sync | `--waitsync height` | syncs to the tip, then prints the height (2–3 s when caught up) |
 | primary address | `--offline addresses` | JSON array, `address_index` 0 |
+| per-order address | `--offline new_address o` | JSON `{"account":0,"address_index":N,"has_orchard":true,"has_sapling":false,"has_transparent":false,"encoded_address":"utest1…"}`; the wallet file keeps it (a later `addresses` lists it) |
 | balance | `--offline spendable_balance` + `--offline balance` | JSON `{"spendable_balance": N}`; `balance` is **not JSON** (`total_<pool>_balance: N` lines for ironwood/orchard/sapling/transparent) |
 | received outputs | `--offline notes all` | JSON `{ironwood_notes,orchard_notes,sapling_notes}.note_summaries[]`: `value, status ("confirmed at block height H" / mempool / transmitted / calculated / failed), spend_status, memo, time, txid, output_index, account_id, scope`. The adapter keeps `scope == "external"`, which drops change. |
 | sent memos | `--offline messages` | JSON `{"value_transfers":[{txid, datetime, status, blockheight, transaction_fee, kind ("sent", "received", "send-to-self", …), value, recipient_address, pools_sent_from, pools_received, memos[]}]}` |
@@ -197,3 +198,16 @@ still to be checked. The adapter doesn't need them.
 A send to a `utest1` address is accepted on NU7 testnet. Both test transactions were mined in Ironwood
 outputs, and their explorer links are listed above. The explorer itself 403s from the sandbox; the
 on-chain check was done with lightwalletd `GetTransaction`.
+
+### Diversified addresses (per-order), 16:10 IST
+- **One-shot `new_address o` persists.** Two calls on a throwaway wallet returned `address_index` 1 and 2, and a later
+  `addresses` listed indexes 0–2. Each is a 110-character `utest1` address with an Orchard receiver only.
+- **A view-only wallet derives the same addresses.** A UFVK-only wallet made from that throwaway wallet returned the
+  same encoded address at indexes 0, 1 and 2 as the full wallet. So in split mode the inbox derives the per-order
+  addresses, and the spending wallet is never touched for them.
+- **The inbox receives payments to them.** Order Y94QVCAHVB was paid at its own address (index 1). The view-only inbox
+  listed the note at 0 confirmations, in the Ironwood pool, like a payment to the primary address.
+- **What zingo-cli doesn't say:** which address a note was paid to. `notes all` has no address or diversifier
+  field, and zingolib's `BasicNoteSummary` carries `TODO: add key id with address index`. Chupke therefore still
+  matches payments to orders by memo.
+

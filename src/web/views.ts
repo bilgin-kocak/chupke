@@ -146,6 +146,8 @@ export interface DashboardData {
   maxDailyUsd: number;
   dailyCapIncludesTest: boolean;
   kv: Record<string, { v: string; updated_at: number } | undefined>;
+  /** Free per-order addresses ready to hand out (null: the shop wallet isn't known yet). */
+  poolFree: number | null;
   orders: Array<Record<string, unknown>>;
   payments: Array<Record<string, unknown>>;
   fulfillments: Array<Record<string, unknown>>;
@@ -186,6 +188,7 @@ ${stat("Shop wallet", wallet ? `${(wallet.spendableZat / 1e8).toFixed(4)} TAZ sp
 ${stat("Bitrefill balance", br ? `${esc(String(br.balance ?? "?"))} ${esc(br.currency ?? "")}` : "?")}
 ${stat("Chain height", esc(d.kv.chain_height?.v ?? "?"))}
 ${stat("Last tick", lastTick ? `${Math.round((d.now - lastTick) / 1000)} s ago` : "never")}
+${stat("Per-order addresses ready", d.poolFree === null ? "?" : String(d.poolFree))}
 </div>
 <h2>Orders</h2>${table(d.orders, [
       ["id", (r) => `<a href="/o/${esc(String(r.id))}">${esc(String(r.id))}</a>`],
@@ -194,6 +197,7 @@ ${stat("Last tick", lastTick ? `${Math.round((d.now - lastTick) / 1000)} s ago` 
       ["$", (r) => s(r.value_usd)],
       ["zat", (r) => s(r.price_zat)],
       ["reply", (r) => mask(r.reply_ua)],
+      ["pays to", (r) => (r.pay_ua ? mask(r.pay_ua) : "shop UA")],
       ["created (IST)", (r) => t(r.created_at)],
     ])}
 <h2>Payments</h2>${table(d.payments, [

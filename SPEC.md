@@ -262,6 +262,7 @@ M3 (-> 18:30):
   4. Overpayment refund.
      > DONE 2026-11-04. After a delivery, payment − price is returned when it is at least OVERPAY_REFUND_MIN_ZAT (20,000 zat); a smaller excess is kept. It is returned to the paid memo's reply address with the memo "Chupke #<order> overpayment: X TAZ returned. / You paid P TAZ; the price was Q TAZ. / ref <txid8>". It has its own committed state and a listSent resume check, and it is held for review if it can't look. Live: order VTQ8KA58D0 paid 0.015 for 0.01 TAZ; delivery fde411c8…, then 0.005 TAZ returned in 287e7afd27e258ed7e570a31d74d9cadd753a49a810289e886eda4a73729b532.
   5. Per-order diversified addresses.
+     > DONE 2026-11-04. The worker keeps ADDRESS_POOL_SIZE (10) fresh addresses ready with `zingo-cli new_address o` (in split mode on the view-only inbox, which derives the same address at each index as the full wallet). The web claims the lowest free one per order, once (address_pool table, orders.pay_ua), and falls back to the primary UA when the pool is empty. Addresses derived by another shop wallet are never shown. Payments are still matched by memo, because zingo-cli 0.5.0 note summaries don't say which address a note was paid to. Live: order Y94QVCAHVB paid its own address (index 1) in 5204d07d…; the split inbox saw it at 0 conf, and the code was delivered in cc7c9429a396a1c979dedc54817d6b94740a7c2d940de69c2190f86d6d1fca8f.
 M4 (-> 20:00): write README.md, PRIVACY.md and FEEDBACK.md (see section 14). I record the video and finalize on Stadium.
 
 13. TESTS (vitest; fakes only here)

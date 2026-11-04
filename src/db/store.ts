@@ -24,6 +24,8 @@ export interface OrderRow {
   label: string;
   price_zat: number;
   reply_ua: string | null;
+  /** This order's own shop address from the pool; null means the shop's primary UA. */
+  pay_ua: string | null;
   created_at: number;
   expires_at: number;
   status: OrderStatus;
@@ -113,9 +115,9 @@ export class Store {
     this.db
       .prepare(
         `INSERT INTO orders (id, sku, kind, product_id, package_id, value, value_usd, label, price_zat, reply_ua,
-           created_at, expires_at, status, terminal_at, updated_at)
+           pay_ua, created_at, expires_at, status, terminal_at, updated_at)
          VALUES (@id, @sku, @kind, @product_id, @package_id, @value, @value_usd, @label, @price_zat, @reply_ua,
-           @created_at, @expires_at, @status, @terminal_at, @updated_at)`,
+           @pay_ua, @created_at, @expires_at, @status, @terminal_at, @updated_at)`,
       )
       .run(o);
   }
@@ -271,6 +273,60 @@ export class Store {
     return orderId
       ? (this.db.prepare(`SELECT * FROM events WHERE order_id = ? ORDER BY id DESC LIMIT ?`).all(orderId, limit) as EventRow[])
       : (this.db.prepare(`SELECT * FROM events ORDER BY id DESC LIMIT ?`).all(limit) as EventRow[]);
+  }
+
+  // ---- address pool (per-order diversified addresses) ----------------------------------------
+
+  addPoolAddress(address: string, index: number, shopUa: string, now: number): boolean {
+    return (
+      this.db
+        .prepare(`INSERT OR IGNORE INTO address_pool (address, address_index, shop_ua, created_at) VALUES (?, ?, ?, ?)`)
+        .run(address, index, shopUa, now).changes === 1
+    );
+  }
+
+  freePoolCount(shopUa: string): number {
+    return (this.db.prepare(`SELECT COUNT(*) AS n FROM address_pool WHERE shop_ua = ? AND order_id IS NULL`).get(shopUa) as { n: number })
+      .n;
+  }
+
+  /**
+   * Gives an order its own address, once: the lowest free one derived by this shop wallet. Returns
+   * null when the pool is empty (the order then shows the shop's primary UA). Never hands out an
+   * address twice.
+   */
+  claimPoolAddress(orderId: string, shopUa: string, now: number): string | null {
+    const claim = this.db.transaction((): string | null => {
+      const existing = this.db.prepare(`SELECT pay_ua FROM orders WHERE id = ?`).get(orderId) as { pay_ua: string | null } | undefined;
+      if (!existing) return null;
+      if (existing.pay_ua) return existing.pay_ua;
+      const row = this.db
+        .prepare(
+          `UPDATE address_pool SET order_id = ?, claimed_at = ?
+           WHERE address = (SELECT address FROM address_pool WHERE shop_ua = ? AND order_id IS NULL ORDER BY address_index LIMIT 1)
+           RETURNING address`,
+        )
+        .get(orderId, now, shopUa) as { address: string } | undefined;
+      if (!row) return null;
+      this.db.prepare(`UPDATE orders SET pay_ua = ?, updated_at = ? WHERE id = ?`).run(row.address, now, orderId);
+      return row.address;
+    });
+    return claim.immediate();
+  }
+
+  /**
+   * The address an order's page shows: its own pool address, if the current shop wallet derived it;
+   * otherwise the shop's primary UA (for example after the operator switched wallets).
+   */
+  payAddress(order: Pick<OrderRow, "pay_ua">, shopUa: string): string {
+    if (!order.pay_ua) return shopUa;
+    const ours = this.db.prepare(`SELECT 1 FROM address_pool WHERE address = ? AND shop_ua = ?`).get(order.pay_ua, shopUa);
+    return ours ? order.pay_ua : shopUa;
+  }
+
+  /** Free addresses derived by a different wallet must not be handed out: that wallet isn't watched. */
+  dropForeignPoolAddresses(shopUa: string): number {
+    return this.db.prepare(`DELETE FROM address_pool WHERE shop_ua != ? AND order_id IS NULL`).run(shopUa).changes;
   }
 
   kvSet(k: string, v: string, now: number): void {

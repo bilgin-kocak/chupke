@@ -182,6 +182,23 @@ money moved.
 - In normal running none of this fires: `/ping` is spaced 3.1 s, the general limiter allows 55 per 10 minutes and the
   product limiter 55 per minute (Bitrefill allows 60), and the money-moving POSTs never retry automatically.
 
+## Per-order diversified addresses, live (Wed 4 Nov 2026, 16:15–16:20 IST)
+
+The worker restarted in split mode with `ADDRESS_POOL_SIZE=10`. Its first two ticks derived 5 addresses each on the
+view-only inbox (`new_address o`, indexes 1–10), at about 7 s per tick.
+
+- **Order Y94QVCAHVB (test-ok, 0.01 TAZ).** The page's ZIP 321 link paid pool address index 1, not the shop's primary
+  UA. The event reads `order_created test-ok, 1000000 zat, own address`.
+- **Payment** `5204d07dca328fda8bd5fe1cbd773dd0896579b17d4fa86b7c62b711d9fdf38e` from the buyer wallet at 16:18:05:
+  1. The view-only inbox listed it at 0 confirmations at 16:18:27, then at 2 confirmations at 16:18:43.
+  2. Bitrefill invoice `b4cfa532-c32e-492b-a287-adc324b87aa9` was created, paid and delivered in about 1 s.
+  3. `memo_sent` at 16:18:50, delivery `cc7c9429a396a1c979dedc54817d6b94740a7c2d940de69c2190f86d6d1fca8f`.
+- **Buyer side:** the buyer wallet showed `Chupke #Y94QVCAHVB delivered` / `Test gift card` / `Code: 34************12`
+  (masked by `buyer:inbox`) at 1 confirmation.
+- **Pool:** the next tick refilled one address (11 rows, 10 free). A claimed address is never handed out again.
+- **Logs:** 0 hits for `utest1`, `uviewtest`, `CHUPKE1` and `Code:` in the worker log since the restart and in the web
+  log, 0 in `events.detail`, and none of the 11 pool addresses appear in any log. No warn or error lines.
+
 ## Adapter rules as built (src/zcash/zingo.ts)
 
 - One zingo-cli process per call, serialized per data dir, with a 120 s timeout (SIGTERM, then SIGKILL).

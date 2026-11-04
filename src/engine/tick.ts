@@ -1,4 +1,6 @@
+import { isReplyAddress } from "../zcash/address.js";
 import { parsePaymentMemo } from "../zcash/memo.js";
+import { NotSupportedError } from "../zcash/wallet.js";
 import { errMsg, type EngineDeps } from "./deps.js";
 import { advanceFulfillment } from "./fulfill.js";
 import { processExcessRefund, processRefund } from "./refund.js";
@@ -6,6 +8,9 @@ import { routePayment } from "./route.js";
 
 /** How many state steps one fulfillment may take inside a single tick (create → pay → poll → send). */
 const MAX_STEPS_PER_TICK = 6;
+
+/** At most this many new pool addresses per tick (each is one zingo-cli run), so a refill never stalls a tick. */
+const POOL_REFILL_PER_TICK = 5;
 
 export interface TickReport {
   ms: number;
@@ -15,6 +20,7 @@ export interface TickReport {
   refunds: number;
   overpayRefunds: number;
   expired: number;
+  poolAdded: number;
   errors: string[];
 }
 
@@ -27,6 +33,8 @@ export class Engine {
   private lastBitrefillBalanceAt = Number.NEGATIVE_INFINITY;
   private lastError = "";
   private firstIngestDone = false;
+  private shopUa = "";
+  private poolUnsupported = false;
 
   constructor(private readonly d: EngineDeps) {}
 
@@ -36,6 +44,9 @@ export class Engine {
     const now = this.d.now();
     const shopUa = await wallet.primaryAddress();
     store.kvSet("shop_ua", shopUa, now);
+    this.shopUa = shopUa;
+    const dropped = store.dropForeignPoolAddresses(shopUa);
+    if (dropped > 0) this.d.log.warn({ dropped }, "dropped free pool addresses derived by a different shop wallet");
     const saved = store.kvGet("ingest_from_height");
     let h = cfg.ingestFromHeight ?? (saved ? Number(saved.v) : undefined);
     if (h === undefined) h = (await wallet.info()).chainHeight;
@@ -46,7 +57,17 @@ export class Engine {
 
   async tick(): Promise<TickReport> {
     const t0 = this.d.now();
-    const report: TickReport = { ms: 0, ingested: 0, routed: 0, advanced: 0, refunds: 0, overpayRefunds: 0, expired: 0, errors: [] };
+    const report: TickReport = {
+      ms: 0,
+      ingested: 0,
+      routed: 0,
+      advanced: 0,
+      refunds: 0,
+      overpayRefunds: 0,
+      expired: 0,
+      poolAdded: 0,
+      errors: [],
+    };
     const steps: Array<[string, () => Promise<void> | void]> = [
       ["sync", () => this.d.wallet.sync()],
       ["ingest", async () => void (report.ingested = await this.ingest())],
@@ -58,6 +79,7 @@ export class Engine {
       ["expire", () => void (report.expired = this.expire())],
       ["snapshot", () => this.snapshot()],
       ["purge", () => this.purge()],
+      ["pool", async () => void (report.poolAdded = await this.refillPool())],
     ];
     for (const [name, fn] of steps) {
       try {
@@ -211,5 +233,31 @@ export class Engine {
     const now = this.d.now();
     const n = this.d.store.purgeReplyAddresses(now, this.d.cfg.purgeAfterMin * 60_000);
     if (n.orders + n.payments > 0) this.d.store.addEvent(now, "purged", {}, `reply addresses removed: ${n.orders} order(s), ${n.payments} payment(s)`);
+  }
+
+  /**
+   * Step 10: keep addressPoolSize free per-order addresses ready. The web holds no keys, so it can't
+   * derive addresses itself; it claims one of these per order. Payments to any of them are received
+   * like payments to the primary UA (same viewing key) and are still matched to orders by memo.
+   */
+  async refillPool(): Promise<number> {
+    const { store, wallet, cfg } = this.d;
+    if (cfg.addressPoolSize <= 0 || this.poolUnsupported || !this.shopUa) return 0;
+    const want = Math.min(cfg.addressPoolSize - store.freePoolCount(this.shopUa), POOL_REFILL_PER_TICK);
+    let added = 0;
+    for (let i = 0; i < want; i++) {
+      let a: { address: string; index: number };
+      try {
+        a = await wallet.newAddress();
+      } catch (e) {
+        if (!(e instanceof NotSupportedError)) throw e;
+        this.poolUnsupported = true;
+        this.d.log.warn("this wallet can't derive new addresses; every order shows the shop's primary UA");
+        return added;
+      }
+      if (a.address === this.shopUa || !isReplyAddress(a.address)) throw new Error("wallet returned an unusable new address");
+      if (store.addPoolAddress(a.address, a.index, this.shopUa, this.d.now())) added++;
+    }
+    return added;
   }
 }

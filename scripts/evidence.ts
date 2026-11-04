@@ -20,11 +20,21 @@ const ist = (ms: number) => new Date(ms + 5.5 * 3600_000).toISOString().replace(
 
 const deliveries = db
   .prepare(
-    `SELECT o.id, o.sku, o.kind, o.label, p.txid AS pay_txid, f.invoice_id, f.delivery_txid, f.updated_at
+    `SELECT o.id, o.sku, o.kind, o.label, o.pay_ua IS NOT NULL AS own_address, p.txid AS pay_txid, f.invoice_id, f.delivery_txid, f.updated_at
      FROM fulfillments f JOIN orders o ON o.id = f.order_id JOIN payments p ON p.key = f.payment_key
      WHERE f.state = 'memo_sent' ORDER BY f.updated_at DESC`,
   )
-  .all() as Array<{ id: string; sku: string; kind: string; label: string; pay_txid: string; invoice_id: string; delivery_txid: string; updated_at: number }>;
+  .all() as Array<{
+  id: string;
+  sku: string;
+  kind: string;
+  label: string;
+  own_address: number;
+  pay_txid: string;
+  invoice_id: string;
+  delivery_txid: string;
+  updated_at: number;
+}>;
 
 // Refund time = the "refunded" event, the latest refund of each reason.
 const refunds = db
@@ -43,13 +53,15 @@ lines.push(`Generated ${ist(Date.now())} IST from the worker database. Explorer:
 lines.push("");
 lines.push("### Deliveries (code sent by shielded memo)");
 lines.push("");
-lines.push("| order | product | payment | Bitrefill invoice | delivery memo tx | at (IST) |");
-lines.push("| --- | --- | --- | --- | --- | --- |");
-const shown = [deliveries.find((d) => d.kind === "real"), ...deliveries.filter((d) => d.kind !== "real").slice(0, 3)].filter(Boolean) as typeof deliveries;
-for (const d of shown) {
-  lines.push(`| ${d.id} | ${d.label}${d.kind === "real" ? " (real)" : " (test)"} | ${x(d.pay_txid)} | \`${d.invoice_id}\` | ${x(d.delivery_txid)} | ${ist(d.updated_at)} |`);
+lines.push("| order | product | paid to | payment | Bitrefill invoice | delivery memo tx | at (IST) |");
+lines.push("| --- | --- | --- | --- | --- | --- | --- |");
+for (const d of deliveries) {
+  const paidTo = d.own_address ? "its own address" : "shop address";
+  lines.push(
+    `| ${d.id} | ${d.label}${d.kind === "real" ? " (real)" : " (test)"} | ${paidTo} | ${x(d.pay_txid)} | \`${d.invoice_id}\` | ${x(d.delivery_txid)} | ${ist(d.updated_at)} |`,
+  );
 }
-if (shown.length === 0) lines.push("| – | – | – | – | – | – |");
+if (deliveries.length === 0) lines.push("| – | – | – | – | – | – | – |");
 lines.push("");
 lines.push("### Refunds (latest of each kind)");
 lines.push("");

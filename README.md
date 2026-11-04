@@ -42,8 +42,8 @@ with refunds) and Lane 2's ending (delivery in the buyer's own encrypted inbox).
 
 1. The buyer picks a product on the Chupke page and pastes a fresh shielded reply address (`utest1…`).
    The address's Bech32m checksum is verified, so typos are caught before any money moves.
-2. The page shows a ZIP 321 QR: the shop address, the TAZ price, and the memo `CHUPKE1 o=<orderId> r=<replyUA>`.
-   The memo is also shown with a copy button.
+2. The page shows a ZIP 321 QR: the order's own shop address (a fresh diversified address, never shown for any other
+   order), the TAZ price, and the memo `CHUPKE1 o=<orderId> r=<replyUA>`. The memo is also shown with a copy button.
 3. The buyer pays from any testnet wallet.
 4. The worker sees the payment, waits for confirmation, runs the guard, buys on Bitrefill, and waits until every
    Bitrefill order says `delivered`.
@@ -102,6 +102,7 @@ These are all real transactions. The full list is in [docs/EVIDENCE.md](docs/EVI
 | refund: quote expired | CVTJ3622GM | [`4e45c0c2…13cb`](https://testnet.zcashexplorer.app/transactions/4e45c0c2a676c5e516ba21352d2ac08a90c2a206c3efdec2330faa75488413cb) |
 | split-mode delivery (view-only inbox watched, outbox sent) | 3J5T3XDWPH | [`6b8d1f3f…5f7d`](https://testnet.zcashexplorer.app/transactions/6b8d1f3f8ccf9990040d7ae18ed6a9daf6e41e6bd6b1764ab57f674c5f555f7d) |
 | overpayment returned after delivery (paid 0.015, price 0.01) | VTQ8KA58D0 | [`287e7afd…b532`](https://testnet.zcashexplorer.app/transactions/287e7afd27e258ed7e570a31d74d9cadd753a49a810289e886eda4a73729b532) |
+| payment to the order's own diversified address, then delivery (split mode) | Y94QVCAHVB | [`5204d07d…f38e`](https://testnet.zcashexplorer.app/transactions/5204d07dca328fda8bd5fe1cbd773dd0896579b17d4fa86b7c62b711d9fdf38e), [`cc7c9429…ca8f`](https://testnet.zcashexplorer.app/transactions/cc7c9429a396a1c979dedc54817d6b94740a7c2d940de69c2190f86d6d1fca8f) |
 
 **Bitrefill purchases use Bitrefill's free test products.** Every invoice above is a real REST v2 invoice
 (created, paid from the shop balance, delivered or failed), but no real-money gift card was bought: the shop's Bitrefill
@@ -119,7 +120,7 @@ balance is 0 and none was needed for the demo. The real-product path is built an
   In Docker the web gets no `.env` and never mounts the wallets volume.
 - **Node 22, TypeScript (strict), tsx, Hono** (server-rendered HTML, one inline CSS block, no third-party scripts, fonts or CDNs,
   strict CSP, `no-referrer`, no request logging), **better-sqlite3**, **zod** (env and every external response),
-  **pino** (path redaction plus address scrubbing), **qrcode** (server-side SVG), **vitest** (84 tests; fakes only in tests).
+  **pino** (path redaction plus address scrubbing), **qrcode** (server-side SVG), **vitest** (94 tests; fakes only in tests).
 - **Zcash via zingo-cli**, behind a `ZcashWallet` adapter. Calls are one-shot and serialized per wallet directory
   (an in-process queue plus a cross-process lock file), with a 120 s timeout and zod-parsed stdout. Logs carry only the
   command, exit code and duration. Findings are in [docs/WALLET.md](docs/WALLET.md):
@@ -142,6 +143,13 @@ balance is 0 and none was needed for the demo. The real-product path is built an
   - Invoices are polled at most every 8 s. Done means *every* order says `delivered`.
   - `redemption_info` is normalized whether it comes as a string or an object, and stripped from invoice responses
     so codes never sit on invoice objects.
+- **Per-order diversified addresses ([ZIP 316](https://zips.z.cash/zip-0316)).**
+  - The worker keeps 10 fresh addresses ready (`zingo-cli new_address o`, an Orchard receiver only). In split mode
+    the view-only inbox derives them; it gives the same address at each index as the spending wallet.
+  - The web holds no keys, so it can't derive addresses. It hands each order the lowest free one, once, and falls back
+    to the shop's primary address if the pool is empty. An address made by a different shop wallet is never shown.
+  - All of them share the shop's viewing key, so the inbox receives payments to any of them. Payments are still
+    matched to orders by memo: zingo-cli 0.5.0 doesn't report which address a note was paid to.
 - **Privacy defaults.** Reply addresses are purged 60 minutes after an order ends, and codes are fetched at send time,
   held in memory and never stored. Status pages and the API carry no addresses or codes. The dashboard masks addresses
   to 8 characters. Full details are in [PRIVACY.md](PRIVACY.md).
@@ -178,7 +186,9 @@ balance is 0 and none was needed for the demo. The real-product path is built an
   [fund the account balance](https://docs.bitrefill.com/docs/account-deposits.md)).
 - **Nym for wallet traffic**: zingo-cli's default mixnet build, run on a host where the mixnet is reachable
   ([zingolib](https://github.com/zingolabs/zingolib)).
-- **Per-order diversified addresses** ([ZIP 316](https://zips.z.cash/zip-0316)), so payments don't share one shop address.
+- **Match payments by receiving address as well as memo**, once zingo-cli reports which address a note was paid to
+  (zingolib's note summaries carry a TODO for the address index). A payment that lost its memo could then still be
+  tied to its order.
 - **The shielded checkout and refund module open-sourced** as a package: ZIP 321 requests, memo formats, the
   exactly-once engine and the zingo-cli adapter ([ZIP 321](https://zips.z.cash/zip-0321)).
 

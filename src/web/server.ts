@@ -103,7 +103,14 @@ export function createApp(store: Store, cfg: WebConfig) {
     if (!shopUa()) return c.html(homePage({ products, sku, reply, error: "The shop wallet isn't ready yet. Try again in a minute." }), 503);
     const r = createOrder(store, allowlist, { sku, replyUa: reply }, { demoZatPerUsd: cfg.DEMO_ZAT_PER_USD, orderTtlMin: cfg.ORDER_TTL_MIN, now: Date.now() });
     if (!r.ok) return c.html(homePage({ products, sku, reply, error: r.message }), 400);
-    store.addEvent(Date.now(), "order_created", { orderId: r.order.id }, `${r.order.sku}, ${r.order.price_zat} zat`);
+    // This order's own address, if the worker has derived spares; otherwise it shows the shop UA.
+    const own = store.claimPoolAddress(r.order.id, shopUa()!, Date.now());
+    store.addEvent(
+      Date.now(),
+      "order_created",
+      { orderId: r.order.id },
+      `${r.order.sku}, ${r.order.price_zat} zat, ${own ? "own address" : "shop address"}`,
+    );
     return c.redirect(`/o/${r.order.id}`, 303);
   });
 
@@ -111,7 +118,8 @@ export function createApp(store: Store, cfg: WebConfig) {
     const id = c.req.param("id");
     const order = isOrderId(id) ? store.getOrder(id) : undefined;
     if (!order) return c.html(notFoundPage(), 404);
-    const ua = shopUa();
+    const shop = shopUa();
+    const ua = shop ? store.payAddress(order, shop) : null;
     const memo = order.reply_ua ? buildPaymentMemo(order.id, order.reply_ua) : null;
     const uri = memo && ua ? buildPaymentUri({ address: ua, amountZat: order.price_zat, memo, message: `Chupke order ${order.id}` }) : null;
     const status = publicStatus(store, order, cfg);
@@ -144,6 +152,7 @@ export function createApp(store: Store, cfg: WebConfig) {
       const db = store.db;
       const kv: DashboardData["kv"] = {};
       for (const k of ["wallet_balance", "bitrefill_balance", "chain_height", "last_tick_at"]) kv[k] = store.kvGet(k);
+      const shop = shopUa();
       return c.html(
         dashboardPage({
           now,
@@ -152,6 +161,7 @@ export function createApp(store: Store, cfg: WebConfig) {
           maxDailyUsd: cfg.MAX_DAILY_USD,
           dailyCapIncludesTest: cfg.DAILY_CAP_INCLUDES_TEST,
           kv,
+          poolFree: shop ? store.freePoolCount(shop) : null,
           orders: db.prepare(`SELECT * FROM orders ORDER BY created_at DESC LIMIT 50`).all() as Array<Record<string, unknown>>,
           payments: db.prepare(`SELECT * FROM payments ORDER BY first_seen_at DESC LIMIT 50`).all() as Array<Record<string, unknown>>,
           fulfillments: db.prepare(`SELECT * FROM fulfillments ORDER BY created_at DESC LIMIT 50`).all() as Array<Record<string, unknown>>,

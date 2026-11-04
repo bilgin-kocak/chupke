@@ -14,6 +14,10 @@ This page answers four questions about what Chupke reveals. Naming a gap costs n
   and never mounts the wallets volume.
 - **No accounts and no email.** The only thing tying a buyer to an order is the reply address they choose to put in
   the memo, and a fresh address per order is recommended.
+- **A fresh shop address for every order.** Each order page shows its own diversified address of the shop wallet
+  ([ZIP 316](https://zips.z.cash/zip-0316)), which is never shown for another order. Comparing order pages or payment
+  requests doesn't link them to one shop address. The worker derives these addresses in advance and the web, which
+  holds no keys, only hands them out.
 - **Logs are scrubbed.** pino redacts secret fields by name and scrubs anything that looks like an address or viewing key.
   Tests assert that codes, addresses and memos never reach logs or `events.detail`. A scan of the live logs after the
   testnet runs found zero.
@@ -26,7 +30,7 @@ This page answers four questions about what Chupke reveals. Naming a gap costs n
 | **The web server** | The buyer's IP address and page visits (Chupke itself logs no requests, but a hosting provider or proxy might), and the reply address, kept so the order page can show the memo. It is deleted 60 minutes after the order ends. |
 | **The operator** (whoever runs the worker) | The order, the amount, the product, and the reply address until it is purged. The dashboard masks addresses to 8 characters, but the database holds the full address until the purge. |
 | **Bitrefill** | That the shop bought product X at time T from its own balance. It never sees the buyer's wallet, address, IP or payment. |
-| **Anyone with the order link** | The order's status, and until the purge the payment memo, which includes the reply address. Order ids are 10 random Crockford base32 characters (50 bits). |
+| **Anyone with the order link** | The order's status and its own shop address, and until the purge the payment memo, which includes the reply address. Order ids are 10 random Crockford base32 characters (50 bits). |
 
 ## 3. What users must trust
 
@@ -51,7 +55,8 @@ This page answers four questions about what Chupke reveals. Naming a gap costs n
    passes through zingo-cli's command line while the inbox is being created.
 3. **Delivery memos without an outgoing viewing key**, so the operator can't re-read delivered codes. That means sending
    deliveries with no OVK, or from a throwaway wallet funded per delivery.
-4. **Per-order diversified addresses**, so separate payments don't share one shop address and the memo's order id
-   isn't the only link.
+4. **Match payments by address as well as memo.** Per-order diversified addresses are live, but the memo's order id is
+   still the only link from a payment to its order, because zingo-cli 0.5.0 doesn't report which of the shop's
+   addresses received a note. With that, a payment that lost its memo could still be tied to its order.
 5. **Nym/Tor-friendly order pages**: no JavaScript requirement, static-first pages, an onion service.
 6. **Batched balance top-ups** (ZEC → USDC), so the timing of top-ups doesn't mirror individual purchases.

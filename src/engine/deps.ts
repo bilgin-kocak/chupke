@@ -34,6 +34,8 @@ export interface EngineConfig {
   /** Ignore outputs mined below this height (pre-existing notes); undefined = chain tip at first start. */
   ingestFromHeight?: number | undefined;
   bitrefillBalanceEveryMs: number;
+  /** Keep this many unclaimed per-order addresses derived ahead of time (0 = every order shows the shop UA). */
+  addressPoolSize: number;
 }
 
 export interface EngineDeps {

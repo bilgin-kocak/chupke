@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS orders (
   label         TEXT NOT NULL,
   price_zat     INTEGER NOT NULL,
   reply_ua      TEXT,                       -- purged PURGE_AFTER_MIN after terminal (I7)
+  pay_ua        TEXT,                       -- extra: this order's own shop address (address_pool); NULL = shop primary UA
   created_at    INTEGER NOT NULL,
   expires_at    INTEGER NOT NULL,
   status        TEXT NOT NULL,              -- awaiting_payment | fulfilling | delivered | refunded | expired | held
@@ -82,6 +83,18 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_order ON events(order_id);
 
+-- extra: per-order diversified addresses (ZIP 316). The worker derives them ahead of time (it holds the
+-- wallet); the web, which holds no keys, hands each order the lowest free one. An address is never reused.
+CREATE TABLE IF NOT EXISTS address_pool (
+  address        TEXT PRIMARY KEY,
+  address_index  INTEGER NOT NULL,
+  shop_ua        TEXT NOT NULL,             -- primary UA of the wallet that derived it
+  created_at     INTEGER NOT NULL,
+  order_id       TEXT UNIQUE,               -- set once, when an order claims it
+  claimed_at     INTEGER
+);
+CREATE INDEX IF NOT EXISTS address_pool_free ON address_pool(shop_ua, order_id, address_index);
+
 CREATE TABLE IF NOT EXISTS kv (
   k          TEXT PRIMARY KEY,
   v          TEXT NOT NULL,
@@ -104,6 +117,7 @@ export function openDb(path: string): DB {
 
 /** Columns added after the first deploy; ALTER TABLE for databases created before them. */
 const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
+  ["orders", "pay_ua", "TEXT"],
   ["payments", "excess_zat", "INTEGER"],
   ["payments", "excess_state", "TEXT"],
   ["payments", "excess_txid", "TEXT"],

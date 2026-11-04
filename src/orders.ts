@@ -47,6 +47,7 @@ export function createOrder(
       label: entry.label,
       price_zat: priceZat(entry.value_usd, opts.demoZatPerUsd),
       reply_ua: replyUa,
+      pay_ua: null,
       created_at: opts.now,
       expires_at: opts.now + opts.orderTtlMin * 60_000,
       status: "awaiting_payment",

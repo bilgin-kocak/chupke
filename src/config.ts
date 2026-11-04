@@ -62,6 +62,8 @@ export const WorkerEnv = SharedEnv.extend({
   /** Ignore received outputs mined below this height (defaults to the chain tip at first start). */
   INGEST_FROM_HEIGHT: z.coerce.number().int().positive().optional(),
   BITREFILL_BALANCE_EVERY_SEC: int(300),
+  /** Per-order diversified addresses kept ready for the web to hand out (0 = all orders use the shop UA). */
+  ADDRESS_POOL_SIZE: int(10),
 });
 
 /** Web only. Must never see worker secrets. */

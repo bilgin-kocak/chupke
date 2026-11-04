@@ -13,6 +13,13 @@ export interface WalletBalance {
   totalZat: number;
 }
 
+/** A fresh unified address of the shop account (ZIP 316 diversified; shielded receivers only). */
+export interface NewAddress {
+  address: string;
+  /** The wallet's address index (ZIP 32 diversifier index order). */
+  index: number;
+}
+
 /** One received output. `key` is stable across rescans (payments.key, invariant I1). */
 export interface IncomingOutput {
   key: string;
@@ -37,6 +44,11 @@ export interface ZcashWallet {
   sync(): Promise<void>;
   /** The wallet's primary shielded unified address (the shop UA). */
   primaryAddress(): Promise<string>;
+  /**
+   * Writes the wallet: derives the next diversified address of the same account. Every address
+   * shares the account's viewing key, so payments to any of them are received like the primary one.
+   */
+  newAddress(): Promise<NewAddress>;
   balance(): Promise<WalletBalance>;
   listIncoming(): Promise<IncomingOutput[]>;
   /** May throw NotSupportedError (e.g. a view-only inbox). */
@@ -64,6 +76,10 @@ export class SplitWallet implements ZcashWallet {
   }
   primaryAddress(): Promise<string> {
     return this.inbox.primaryAddress();
+  }
+  /** The view-only inbox derives the same address at each index as the full wallet (checked live). */
+  newAddress(): Promise<NewAddress> {
+    return this.inbox.newAddress();
   }
   balance(): Promise<WalletBalance> {
     return this.outbox.balance();

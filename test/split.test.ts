@@ -10,6 +10,7 @@ function recorder(name: string, calls: string[]): ZcashWallet {
     info: rec("info", { chainHeight: 1, walletHeight: 1 }),
     sync: rec("sync", undefined),
     primaryAddress: rec("primaryAddress", `${name}-ua`),
+    newAddress: rec("newAddress", { address: `${name}-ua-1`, index: 1 }),
     balance: rec("balance", { spendableZat: 1, totalZat: 1 }),
     listIncoming: rec("listIncoming", []),
     listSent: rec("listSent", []),
@@ -28,6 +29,7 @@ describe("SplitWallet", () => {
     await w.listIncoming();
     await w.info();
     await w.primaryAddress();
+    await w.newAddress();
     await w.balance();
     await w.listSent();
     await w.send("x", 1, "m");
@@ -37,6 +39,7 @@ describe("SplitWallet", () => {
       "inbox.listIncoming",
       "inbox.info",
       "inbox.primaryAddress",
+      "inbox.newAddress",
       "outbox.balance",
       "outbox.listSent",
       "outbox.send",

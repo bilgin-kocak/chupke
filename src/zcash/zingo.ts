@@ -9,6 +9,7 @@ import {
   WalletCommandError,
   paymentKey,
   type IncomingOutput,
+  type NewAddress,
   type Pool,
   type SentOutput,
   type WalletBalance,
@@ -122,6 +123,11 @@ const SpendableOut = z.looseObject({ spendable_balance: z.number().int() });
 const AddressesOut = z.array(
   z.looseObject({ address_index: z.number().int(), encoded_address: z.string(), has_transparent: z.boolean().optional() }),
 );
+const NewAddressOut = z.looseObject({
+  address_index: z.number().int().nonnegative(),
+  encoded_address: z.string(),
+  has_transparent: z.boolean(),
+});
 const NoteOut = z.looseObject({
   value: z.number().int(),
   status: z.string(),
@@ -229,6 +235,13 @@ export class ZingoWallet implements ZcashWallet {
     const first = list.find((a) => a.address_index === 0) ?? list[0];
     if (!first) throw new WalletCommandError("addresses", 0, "wallet has no unified address");
     return first.encoded_address;
+  }
+
+  /** `new_address o`: an Orchard-receiver-only address (payments to it land in the Ironwood pool on NU7). */
+  async newAddress(): Promise<NewAddress> {
+    const out = NewAddressOut.parse(extractJson(await this.run("new_address", "offline", ["new_address", "o"])));
+    if (out.has_transparent) throw new WalletCommandError("new_address", 0, "new address carries a transparent receiver");
+    return { address: out.encoded_address, index: out.address_index };
   }
 
   async balance(): Promise<WalletBalance> {

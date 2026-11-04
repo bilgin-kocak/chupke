@@ -59,6 +59,19 @@ describe("web", () => {
     expect(html).not.toContain("Code:");
   });
 
+  it("shows each order its own pool address when one is free, else the shop UA", async () => {
+    const { app: a, store } = app();
+    const own = fakeUa();
+    store.addPoolAddress(own, 1, SHOP, 0);
+    store.addPoolAddress(fakeUa(), 1, fakeUa(), 0); // derived by another wallet: never handed out
+    const first = await (await a.request((await createOrder(a, fakeUa())).headers.get("location")!)).text();
+    expect(first).toContain(`zcash:${own}?amount=0.01`);
+    expect(first).not.toContain(SHOP);
+    const second = await (await a.request((await createOrder(a, fakeUa())).headers.get("location")!)).text();
+    expect(second).toContain(`zcash:${SHOP}?amount=0.01`);
+    expect(store.freePoolCount(SHOP)).toBe(0);
+  });
+
   it("status API returns no addresses or codes", async () => {
     const { app: a } = app();
     const reply = fakeUa();

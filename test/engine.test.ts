@@ -33,12 +33,19 @@ class FakeWallet implements ZcashWallet {
   /** Apply failOnSendMode to the Nth send (1-based) instead of the next one. */
   failOnSendNumber: number | null = null;
   failOnSendMode: "before" | "after" | "reject" = "after";
+  addresses: string[] = [];
+  newAddressSupported = true;
   async info() {
     return { chainHeight: 1000, walletHeight: 1000 };
   }
   async sync() {}
   async primaryAddress() {
     return SHOP_UA;
+  }
+  async newAddress() {
+    if (!this.newAddressSupported) throw new NotSupportedError("newAddress");
+    this.addresses.push(fakeUa());
+    return { address: this.addresses.at(-1)!, index: this.addresses.length };
   }
   async balance() {
     return { spendableZat: 100_000_000, totalZat: 100_000_000 };
@@ -148,6 +155,7 @@ const CFG: EngineConfig = {
   resendGuardMs: 180_000,
   invoicePollMs: 8_000,
   bitrefillBalanceEveryMs: 300_000,
+  addressPoolSize: 0,
 };
 
 function harness(cfg: Partial<EngineConfig> = {}) {
@@ -539,5 +547,59 @@ describe("routing edge cases", () => {
     h.wallet.incoming[0] = { ...h.wallet.incoming[0]!, confirmations: 1 };
     await h.ticks(2);
     expect(h.store.getFulfillment(order.id)!.state).toBe("memo_sent");
+  });
+});
+
+describe("per-order addresses", () => {
+  it("keeps the pool topped up, at most 5 new addresses per tick", async () => {
+    const p = harness({ addressPoolSize: 7 });
+    await p.engine.init();
+    await p.ticks(1);
+    expect(p.store.freePoolCount(SHOP_UA)).toBe(5);
+    await p.ticks(2);
+    expect(p.store.freePoolCount(SHOP_UA)).toBe(7);
+    expect(p.wallet.addresses).toHaveLength(7);
+    expect(h.wallet.addresses).toHaveLength(0); // pool size 0 derives nothing
+  });
+
+  it("gives each order its own address once, never reuses one, and falls back to the shop UA when empty", async () => {
+    const p = harness({ addressPoolSize: 2 });
+    await p.engine.init();
+    await p.ticks(1);
+    const [a, b, c] = [p.order(), p.order(), p.order()];
+    const claim = (id: string) => p.store.claimPoolAddress(id, SHOP_UA, 0);
+    expect(claim(a.id)).toBe(p.wallet.addresses[0]);
+    expect(claim(b.id)).toBe(p.wallet.addresses[1]);
+    expect(claim(c.id)).toBeNull();
+    expect(claim(a.id)).toBe(p.wallet.addresses[0]); // asking again changes nothing
+    expect(p.store.payAddress(p.store.getOrder(a.id)!, SHOP_UA)).toBe(p.wallet.addresses[0]);
+    expect(p.store.payAddress(p.store.getOrder(c.id)!, SHOP_UA)).toBe(SHOP_UA);
+    await p.ticks(1); // the refill derives fresh ones; claimed addresses never return to the pool
+    expect(p.store.freePoolCount(SHOP_UA)).toBe(2);
+    expect(claim(c.id)).toBe(p.wallet.addresses[2]);
+    expect(new Set([a, b, c].map((o) => p.store.getOrder(o.id)!.pay_ua)).size).toBe(3);
+  });
+
+  it("never shows an address another shop wallet derived", async () => {
+    const p = harness({ addressPoolSize: 0 });
+    const oldShop = fakeUa();
+    const [claimed, free] = [fakeUa(), fakeUa()];
+    p.store.addPoolAddress(claimed, 1, oldShop, 0);
+    const o = p.order();
+    expect(p.store.claimPoolAddress(o.id, oldShop, 0)).toBe(claimed);
+    p.store.addPoolAddress(free, 2, oldShop, 0);
+    await p.engine.init(); // the wallet now says the shop UA is SHOP_UA
+    expect(p.store.freePoolCount(oldShop)).toBe(0); // free foreign addresses are dropped
+    expect(p.store.claimPoolAddress(p.order().id, SHOP_UA, 0)).toBeNull();
+    expect(p.store.payAddress(p.store.getOrder(o.id)!, SHOP_UA)).toBe(SHOP_UA); // not the old wallet's address
+  });
+
+  it("a wallet that can't derive addresses turns the pool off without tick errors", async () => {
+    const p = harness({ addressPoolSize: 3 });
+    p.wallet.newAddressSupported = false;
+    await p.engine.init();
+    await p.ticks(2);
+    expect(p.store.freePoolCount(SHOP_UA)).toBe(0);
+    expect(p.store.events().filter((e) => e.type === "tick_error")).toHaveLength(0);
   });
 });
