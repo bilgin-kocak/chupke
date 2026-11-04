@@ -134,4 +134,16 @@ still to be checked. The adapter doesn't need them.
   consistent with Orchard being sealed.
 - `balance` showed `total_ironwood_balance: 100_000_000` with underscore digit separators. The parser
   was fixed in commit "parse underscore digit separators".
-- `spendable_balance` stays 0 until the note has `min_confirmations` (3) confirmations.
+- `spendable_balance` stays 0 until the note has `min_confirmations` (3) confirmations. It went from 0 to
+  100,000,000 about 2 minutes after the note was mined.
+
+### Send 1: buyer → shop with a payment memo (12:45 IST)
+- Command (adapter `send`): `zingo-cli --chain testnet --data-dir data/wallets/buyer --server https://testnet.zec.rocks:443 --waitsync quicksend '[{"address":"<shop UA>","amount":600000,"memo":"CHUPKE1 o=<10 chars> r=<buyer UA>"}]'`.
+  It exited 0 after 5.3 s, including sync and proving. stdout was JSON `{"txids":["efe4efd4…"],"transmissions":[…]}`.
+- txid `efe4efd400c39d6d46464c6c238e0aa156081153b97e7f36c9717ede0fc6bae7`, mined at **4581272**.
+  `scripts/tx-status.ts` (lightwalletd `GetTransaction`) reported 9,166 bytes mined at 4581272.
+  https://testnet.zcashexplorer.app/transactions/efe4efd400c39d6d46464c6c238e0aa156081153b97e7f36c9717ede0fc6bae7
+- Shop side: `listIncoming` returned `efe4efd4…bae7:ironwood:0`, pool ironwood, 600,000 zat, conf 1.
+  The memo matched **byte for byte**, checked by sha256 against the sender's record, with the memo never
+  printed. That means the 133-byte `CHUPKE1 o=… r=<utest1…>` payment memo survives the round trip intact.
+- The fee came out of the buyer's change (ZIP 317, computed by the wallet).
