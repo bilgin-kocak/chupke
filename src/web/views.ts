@@ -136,6 +136,93 @@ render(s); tick(); setInterval(tick,1000); if(!terminal(s.stage)) setTimeout(pol
   );
 }
 
+export interface DashboardData {
+  now: number;
+  spendUsd: number;
+  maxOrderUsd: number;
+  maxDailyUsd: number;
+  dailyCapIncludesTest: boolean;
+  kv: Record<string, { v: string; updated_at: number } | undefined>;
+  orders: Array<Record<string, unknown>>;
+  payments: Array<Record<string, unknown>>;
+  fulfillments: Array<Record<string, unknown>>;
+  events: Array<{ at: number; type: string; order_id: string | null; detail: string | null }>;
+  explorer: string;
+}
+
+function ist(ms: number | null | undefined): string {
+  if (!ms) return "";
+  return new Date(ms + 5.5 * 3600_000).toISOString().replace("T", " ").slice(5, 19);
+}
+
+function table(rows: Array<Record<string, unknown>>, cols: Array<[string, (r: Record<string, unknown>) => string]>): string {
+  if (rows.length === 0) return `<p class="hint">none</p>`;
+  return `<div style="overflow-x:auto"><table><thead><tr>${cols.map(([h]) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${rows
+    .map((r) => `<tr>${cols.map(([, f]) => `<td>${f(r)}</td>`).join("")}</tr>`)
+    .join("")}</tbody></table></div>`;
+}
+
+export function dashboardPage(d: DashboardData): string {
+  const tx = (id: unknown) => (typeof id === "string" && id ? `<a href="${esc(d.explorer + id)}" rel="noreferrer">${esc(id.slice(0, 10))}…</a>` : "");
+  const mask = (ua: unknown) => (typeof ua === "string" && ua ? `${esc(ua.slice(0, 8))}…` : "");
+  const t = (v: unknown) => esc(typeof v === "number" ? ist(v) : "");
+  const s = (v: unknown) => esc(v === null || v === undefined ? "" : String(v));
+  const wallet = d.kv.wallet_balance ? (JSON.parse(d.kv.wallet_balance.v) as { spendableZat: number; totalZat: number }) : null;
+  const br = d.kv.bitrefill_balance ? (JSON.parse(d.kv.bitrefill_balance.v) as { balance?: number | string; currency?: string }) : null;
+  const lastTick = d.kv.last_tick_at ? Number(d.kv.last_tick_at.v) : null;
+  const stat = (label: string, value: string) => `<div class="card" style="margin:0"><div class="hint">${esc(label)}</div><div style="font-weight:700">${value}</div></div>`;
+  return layout(
+    "Chupke dashboard",
+    `<style>main{max-width:1100px}table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;white-space:nowrap}th{color:var(--muted);font-weight:600}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}</style>
+<meta http-equiv="refresh" content="10">
+<h1>Dashboard</h1><p class="lead">Addresses are masked to 8 characters. Redemption codes are never stored, so they can't be shown.</p>
+<div class="stats">
+${stat("Today's spend (IST)", `$${d.spendUsd.toFixed(2)} of $${d.maxDailyUsd}${d.dailyCapIncludesTest ? "" : " (real products)"}`)}
+${stat("Per-order cap", `$${d.maxOrderUsd}`)}
+${stat("Shop wallet", wallet ? `${(wallet.spendableZat / 1e8).toFixed(4)} TAZ spendable / ${(wallet.totalZat / 1e8).toFixed(4)} total` : "?")}
+${stat("Bitrefill balance", br ? `${esc(String(br.balance ?? "?"))} ${esc(br.currency ?? "")}` : "?")}
+${stat("Chain height", esc(d.kv.chain_height?.v ?? "?"))}
+${stat("Last tick", lastTick ? `${Math.round((d.now - lastTick) / 1000)} s ago` : "never")}
+</div>
+<h2>Orders</h2>${table(d.orders, [
+      ["id", (r) => `<a href="/o/${esc(String(r.id))}">${esc(String(r.id))}</a>`],
+      ["sku", (r) => s(r.sku)],
+      ["status", (r) => s(r.status)],
+      ["$", (r) => s(r.value_usd)],
+      ["zat", (r) => s(r.price_zat)],
+      ["reply", (r) => mask(r.reply_ua)],
+      ["created (IST)", (r) => t(r.created_at)],
+    ])}
+<h2>Payments</h2>${table(d.payments, [
+      ["txid", (r) => tx(r.txid)],
+      ["order", (r) => s(r.order_id)],
+      ["zat", (r) => s(r.amount_zat)],
+      ["state", (r) => s(r.state)],
+      ["reason", (r) => s(r.reason)],
+      ["conf", (r) => s(r.confirmations)],
+      ["reply", (r) => mask(r.reply_ua)],
+      ["refund", (r) => tx(r.refund_txid)],
+      ["seen (IST)", (r) => t(r.first_seen_at)],
+    ])}
+<h2>Fulfillments</h2>${table(d.fulfillments, [
+      ["order", (r) => s(r.order_id)],
+      ["state", (r) => s(r.state)],
+      ["invoice", (r) => s(r.invoice_id)],
+      ["invoice status", (r) => s(r.invoice_status)],
+      ["delivery", (r) => tx(r.delivery_txid)],
+      ["error", (r) => s(r.error)],
+      ["attempts", (r) => s(r.attempts)],
+      ["updated (IST)", (r) => t(r.updated_at)],
+    ])}
+<h2>Events</h2>${table(d.events as unknown as Array<Record<string, unknown>>, [
+      ["at (IST)", (r) => t(r.at)],
+      ["type", (r) => s(r.type)],
+      ["order", (r) => s(r.order_id)],
+      ["detail", (r) => s(r.detail)],
+    ])}`,
+  );
+}
+
 export function notFoundPage(): string {
   return layout("Not found — Chupke", `<h1>Not found</h1><p><a href="/">Back to Chupke</a></p>`);
 }

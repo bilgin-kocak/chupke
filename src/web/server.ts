@@ -7,17 +7,18 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { basicAuth } from "hono/basic-auth";
 import { loadAllowlist, loadDotEnv, loadWebConfig, type WebConfig } from "../config.js";
 import { openDb } from "../db/schema.js";
 import { Store, type OrderRow } from "../db/store.js";
-import { reasonText } from "../engine/guard.js";
+import { istDayStart, reasonText } from "../engine/guard.js";
 import { isOrderId } from "../ids.js";
 import { createLogger } from "../log.js";
 import { createOrder, priceZat } from "../orders.js";
 import { buildPaymentMemo } from "../zcash/memo.js";
 import { buildPaymentUri, zatToZec } from "../zcash/zip321.js";
 import { qrSvg } from "./qr.js";
-import { homePage, notFoundPage, orderPage } from "./views.js";
+import { dashboardPage, homePage, notFoundPage, orderPage, type DashboardData } from "./views.js";
 
 export type Stage = "waiting" | "seen" | "confirmed" | "buying" | "delivered" | "sent" | "refunding" | "refunded" | "expired" | "held";
 
@@ -126,6 +127,32 @@ export function createApp(store: Store, cfg: WebConfig) {
     if (!order) return c.json({ error: "not_found" }, 404);
     return c.json(publicStatus(store, order, cfg));
   });
+
+  const dashboardPassword = cfg.DASHBOARD_PASSWORD;
+  if (dashboardPassword) {
+    app.use("/dashboard", basicAuth({ username: "chupke", password: dashboardPassword }));
+    app.get("/dashboard", (c) => {
+      const now = Date.now();
+      const db = store.db;
+      const kv: DashboardData["kv"] = {};
+      for (const k of ["wallet_balance", "bitrefill_balance", "chain_height", "last_tick_at"]) kv[k] = store.kvGet(k);
+      return c.html(
+        dashboardPage({
+          now,
+          spendUsd: store.committedSpendUsd(istDayStart(now), cfg.DAILY_CAP_INCLUDES_TEST),
+          maxOrderUsd: cfg.MAX_ORDER_USD,
+          maxDailyUsd: cfg.MAX_DAILY_USD,
+          dailyCapIncludesTest: cfg.DAILY_CAP_INCLUDES_TEST,
+          kv,
+          orders: db.prepare(`SELECT * FROM orders ORDER BY created_at DESC LIMIT 50`).all() as Array<Record<string, unknown>>,
+          payments: db.prepare(`SELECT * FROM payments ORDER BY first_seen_at DESC LIMIT 50`).all() as Array<Record<string, unknown>>,
+          fulfillments: db.prepare(`SELECT * FROM fulfillments ORDER BY created_at DESC LIMIT 50`).all() as Array<Record<string, unknown>>,
+          events: store.events(150),
+          explorer: cfg.EXPLORER_TX_URL,
+        }),
+      );
+    });
+  }
 
   app.get("/healthz", (c) => {
     const last = store.kvGet("last_tick_at");

@@ -71,6 +71,22 @@ describe("web", () => {
     expect((await a.request("/api/o/NOPE")).status).toBe(404);
   });
 
+  it("dashboard needs the password and masks addresses to 8 chars", async () => {
+    const store = new Store(openDb(":memory:"));
+    const cfg = loadWebConfig({ SHOP_UA: SHOP, DASHBOARD_PASSWORD: "pw" } as NodeJS.ProcessEnv);
+    const a = createApp(store, cfg);
+    const reply = fakeUa();
+    await createOrder(a, reply);
+    expect((await a.request("/dashboard")).status).toBe(401);
+    const res = await a.request("/dashboard", { headers: { Authorization: `Basic ${Buffer.from("chupke:pw").toString("base64")}` } });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("spend (IST)");
+    expect(html).toContain(`${reply.slice(0, 8)}…`);
+    expect(html).not.toContain(reply);
+    expect((await app().app.request("/dashboard")).status).toBe(404); // no password configured: no dashboard
+  });
+
   it("healthz reports readiness", async () => {
     const res = await app().app.request("/healthz");
     expect(await res.json()).toMatchObject({ ok: true, shopReady: true });
