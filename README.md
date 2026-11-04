@@ -116,7 +116,7 @@ balance is 0 and none was needed for the demo. The real-product path is built an
   In Docker the web gets no `.env` and never mounts the wallets volume.
 - **Node 22, TypeScript (strict), tsx, Hono** (server-rendered HTML, one inline CSS block, no third-party scripts, fonts or CDNs,
   strict CSP, `no-referrer`, no request logging), **better-sqlite3**, **zod** (env and every external response),
-  **pino** (path redaction plus address scrubbing), **qrcode** (server-side SVG), **vitest** (75 tests; fakes only in tests).
+  **pino** (path redaction plus address scrubbing), **qrcode** (server-side SVG), **vitest** (78 tests; fakes only in tests).
 - **Zcash via zingo-cli**, behind a `ZcashWallet` adapter. Calls are one-shot and serialized per wallet directory
   (an in-process queue plus a cross-process lock file), with a 120 s timeout and zod-parsed stdout. Logs carry only the
   command, exit code and duration. Findings are in [docs/WALLET.md](docs/WALLET.md):
@@ -181,6 +181,6 @@ balance is 0 and none was needed for the demo. The real-product path is built an
 
 `src/` holds config, logging, ids, `db/`, `zcash/` (wallet interface, zingo adapter, memo, ZIP 321, address checks),
 `bitrefill/` (client, limiter, redemption), `engine/` (guard, route, fulfill, refund, tick), `web/` (server, views, QR),
-and `worker.ts`. `scripts/` holds the zingo-cli build, smoke tests, buy-once, buyer pay/inbox, the refund suite,
+and `worker.ts`. `scripts/` holds the zingo-cli build, smoke tests, buy-once, product search (`find-products`), the MCP catalog, buyer pay/inbox, the refund suite,
 the rescan, inbox creation and the evidence table. `test/` holds the vitest suite. `docs/` holds WALLET.md (Zcash tooling),
 NOTES.md (runs and decisions) and EVIDENCE.md.
