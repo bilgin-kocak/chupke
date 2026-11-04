@@ -66,6 +66,20 @@ what we tried, what happened, and what we expected. At M4 it gets cleaned up int
   silently miss one. We now treat `all_error` and `permanent_failure` (plus error/cancelled) as failures,
   and we raise a "stuck" event for any paid order that stays unresolved for 15 minutes.
 
+### 2026-11-04 14:00: hosted MCP server for catalog discovery
+- **Tried:** `tools/list`, then `search-products` and `get-product-details` on `https://api.bitrefill.com/mcp`
+  (stateless JSON-RPC over HTTP), authenticated with the same personal API key as REST.
+- **Happened:**
+  - `tools/list` returned 12 tools, so the key was accepted (guests see 7).
+  - The first `search-products` call failed: `Invalid input: expected string, received undefined at intent`. The
+    examples on the eCommerce MCP page show `search-products(query="Amazon", country="US")` without an `intent`,
+    but the schema marks it required.
+  - Read tools answer in TOON. `get-product-details` with `currency: "USD"` gave each denomination's real USD
+    price (₹100 Google Play India = $1.14), which REST v2 doesn't give directly (it gives BTC sats).
+- **Expected:** examples that include the required `intent`. Otherwise this is a great fit: MCP for discovery and
+  USD pricing, and REST v2 for the exact `package_id` the worker buys with. Our `scripts/mcp-catalog.ts`
+  combines the two and proposes allowlist entries for a human to approve.
+
 ### 2026-11-04 12:56: redemption data inside invoices
 - **Tried:** polling `GET /invoices/{id}` for delivery status.
 - **Happened:** each order in the invoice response carries `redemption_info`, so the gift card secret travels

@@ -1,0 +1,50 @@
+[
+  {
+    "sku": "google-play-india-50",
+    "kind": "real",
+    "label": "Google Play India ₹50",
+    "product_id": "google-play-india",
+    "package_id": "google-play-india<&>50",
+    "value_usd": 0.57,
+    "source": "bitrefill-mcp get-product-details (USD), package id checked with REST v2",
+    "price_usd": "0.57",
+    "rest_package_verified": true,
+    "proposed_at": "2026-11-04T08:26:57.156Z"
+  },
+  {
+    "sku": "google-play-india-100",
+    "kind": "real",
+    "label": "Google Play India ₹100",
+    "product_id": "google-play-india",
+    "package_id": "google-play-india<&>100",
+    "value_usd": 1.14,
+    "source": "bitrefill-mcp get-product-details (USD), package id checked with REST v2",
+    "price_usd": "1.14",
+    "rest_package_verified": true,
+    "proposed_at": "2026-11-04T08:26:57.156Z"
+  },
+  {
+    "sku": "flipkart-india-50",
+    "kind": "real",
+    "label": "Flipkart India ₹50",
+    "product_id": "flipkart-india",
+    "package_id": "flipkart-india<&>50",
+    "value_usd": 0.56,
+    "source": "bitrefill-mcp get-product-details (USD), package id checked with REST v2",
+    "price_usd": "0.56",
+    "rest_package_verified": true,
+    "proposed_at": "2026-11-04T08:26:58.576Z"
+  },
+  {
+    "sku": "flipkart-india-100",
+    "kind": "real",
+    "label": "Flipkart India ₹100",
+    "product_id": "flipkart-india",
+    "package_id": "flipkart-india<&>100",
+    "value_usd": 1.12,
+    "source": "bitrefill-mcp get-product-details (USD), package id checked with REST v2",
+    "price_usd": "1.12",
+    "rest_package_verified": true,
+    "proposed_at": "2026-11-04T08:26:58.576Z"
+  }
+]

@@ -143,7 +143,14 @@ These are all real transactions. The full list is in [docs/EVIDENCE.md](docs/EVI
   - undocumented failure states (`all_error`, `permanent_failure`), which the live refund suite caught
   - codes embedded in invoice responses
   - an unlabeled BTC price unit
-- *(The MCP catalog script is a stretch goal and isn't built yet.)*
+- **Hosted MCP server** (`https://api.bitrefill.com/mcp`): `scripts/mcp-catalog.ts` calls only the read tools,
+  `search-products` and `get-product-details` with `currency: USD`.
+  1. It finds code-only gift cards and their real USD prices.
+  2. It checks each `package_id` against REST v2.
+  3. It writes proposals within the per-order cap to `config/allowlist.proposed.json`.
+  4. A human approves one with `--approve <sku>`.
+
+  Using the two surfaces together means MCP does discovery and pricing while REST does the exact, guarded purchase.
 
 ## Next milestone (30 days)
 
