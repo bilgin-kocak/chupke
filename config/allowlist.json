@@ -1,0 +1,18 @@
+[
+  {
+    "sku": "test-ok",
+    "kind": "test",
+    "label": "Test gift card",
+    "product_id": "test-gift-card-code",
+    "package_id": "PENDING-from-product-details",
+    "value_usd": 5
+  },
+  {
+    "sku": "test-fail",
+    "kind": "test",
+    "label": "Test gift card (always fails)",
+    "product_id": "test-gift-card-code-fail",
+    "package_id": "PENDING-from-product-details",
+    "value_usd": 5
+  }
+]
