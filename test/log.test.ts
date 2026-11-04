@@ -2,7 +2,7 @@ import { Writable } from "node:stream";
 import { describe, expect, it } from "vitest";
 import { createLogger, scrub } from "../src/log.js";
 
-const UA = "utest1l6w362zgp6hwkv5vgua4x2xra8wdvqmpqu83pe886stjxhme0958226zu8cetm6uvzq64za0q0dqhz3k4d03sgqfxlaut2rq5uvt9vsa";
+const UA = "utest1qpzry9x8gf2tvdw0s3jn54khce6mua7lqpzry9x8gf2tvdw0s3jn54khce6mua7lqpzry9x8gf2tvdw0s3jn54khce6mua7lqpzr"; // synthetic: right charset and length, not a real address
 
 function spy() {
   const lines: string[] = [];
