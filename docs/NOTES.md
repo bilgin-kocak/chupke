@@ -199,6 +199,24 @@ view-only inbox (`new_address o`, indexes 1–10), at about 7 s per tick.
 - **Logs:** 0 hits for `utest1`, `uviewtest`, `CHUPKE1` and `Code:` in the worker log since the restart and in the web
   log, 0 in `events.detail`, and none of the 11 pool addresses appear in any log. No warn or error lines.
 
+## Nym build variant (Wed 4 Nov 2026, 16:25–16:45 IST)
+
+- **Local build:** `ZINGO_BUILD=nym scripts/build-zingo.sh` from the pinned commit with the CA patch. zingo-cli took
+  4 min 6 s and `nym-proxy` (the Nym SDK stack) 5 min 56 s on 4 cores, with no warnings. It went into a separate
+  target dir and `data/nym-bin`, so the running worker's binary was untouched.
+- **CI:** the `docker-nym` job built and pushed `ghcr.io/bilgin-kocak/chupke:nym` (and `:nym-<sha>`). The pulled image
+  has `bin/zingo-cli` and `bin/nym-proxy`, reports `CHUPKE_ZINGO_BUILD=nym` and runs as uid 10001 (747 MB).
+- **Offline:** on a throwaway copy of the buyer wallet it read the same primary address and the same 26 notes as the
+  nakednet build.
+- **Online, in this sandbox (no mixnet egress):**
+  1. Without `nym-proxy` it exited 1 at once: `Mixnet Mode is required for a connected session: Mixnet Mode could not
+     start`. On a send, the adapter now classifies this as never broadcast (zingo-cli raises it before its pre-send
+     sync).
+  2. With `nym-proxy` beside it, there was no output for 5 minutes. The proxy was started three times, and zingo-cli
+     was still waiting when the test's timeout stopped it.
+  3. In neither case did anything fall back to a direct connection.
+- **Not done:** a run against the mixnet. That needs a host that can reach Nym's gateways (docs/DEPLOY.md, step 6).
+
 ## Adapter rules as built (src/zcash/zingo.ts)
 
 - One zingo-cli process per call, serialized per data dir, with a 120 s timeout (SIGTERM, then SIGKILL).
