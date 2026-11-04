@@ -99,7 +99,7 @@ VERIFY in M0 using help and real runs, and record in docs/WALLET.md:
 > 2. `send` only proposes, and the proposal holds sync until `confirm` or `decline`. `quicksend` combines both and prints JSON `{"txids":[...]}`.
 > 3. `export_ufvk` prints JSON `{ufvk, birthday}`. The chain height comes from `info` (`latest_block_height`); the wallet's last-seen height comes from `height`.
 > 4. The wallet default is min_confirmations = 3 (change it with `settings min_confirmations <n>`).
-> 5. PENDING until the wallets are funded. testnet.zcashexplorer.app returns 403 to the sandbox, so the txid is checked in a browser and with lightwalletd GetTransaction (scripts/tx-status.ts).
+> 5. Yes. buyer→shop `efe4efd400c39d6d46464c6c238e0aa156081153b97e7f36c9717ede0fc6bae7` was mined at 4581272, with the CHUPKE1 memo byte-exact. shop→buyer `32ba681f33e57a8ebb32ca3a14b0bc4de26c4c2e9845c2f40acb2c1d5d6c091d` (1,000 zat plus a memo) was mined at 4581277. Both landed in the Ironwood pool. The fee was 10,000 zat (ZIP 317), and a 1,000-zat output was accepted. testnet.zcashexplorer.app returns 403 to the sandbox, so mining was confirmed with lightwalletd GetTransaction (scripts/tx-status.ts); the explorer links are for a browser.
 > Corrections to the README facts above:
 > - The default build sends every transaction over the Nym mixnet and fails closed, and a build without `nym` is offline-only. Chupke therefore builds with `--no-default-features --features nakednet-test-mode` (scripts/build-zingo.sh).
 > - Sessions are offline-first; `--server` implies online consent.

@@ -147,3 +147,23 @@ still to be checked. The adapter doesn't need them.
   The memo matched **byte for byte**, checked by sha256 against the sender's record, with the memo never
   printed. That means the 133-byte `CHUPKE1 o=… r=<utest1…>` payment memo survives the round trip intact.
 - The fee came out of the buyer's change (ZIP 317, computed by the wallet).
+
+### Send 2: shop → buyer, 1,000 zat with a memo (12:47 IST)
+- The shop's 600,000 zat became spendable at 12:46:51, about a minute after mining (3 confirmations at
+  roughly 25 s per block). Then the adapter's `send` ran once:
+  `--waitsync quicksend '[{"address":"<buyer UA>","amount":1000,"memo":"Chupke smoke <iso time>"}]'`
+  It exited 0 after 5.8 s.
+- txid `32ba681f33e57a8ebb32ca3a14b0bc4de26c4c2e9845c2f40acb2c1d5d6c091d`, mined at **4581277**
+  (confirmed by `tx-status`).
+  https://testnet.zcashexplorer.app/transactions/32ba681f33e57a8ebb32ca3a14b0bc4de26c4c2e9845c2f40acb2c1d5d6c091d
+- **A 1,000-zat output is accepted**, so `DELIVERY_AMOUNT_ZAT=1000` works as is.
+- Buyer side: `listIncoming` shows `32ba681f…091d:ironwood:0`, 1,000 zat, and the memo is byte-exact.
+- Shop side: `listSent` (from `messages`) shows the send with `to` = the buyer UA, amount 1,000, and the
+  37-byte memo. The worker can therefore find its own deliveries and refunds after a crash, by the
+  `#<orderId> delivered` / `ref <txid8>` tags.
+- Fee: 600,000 − 1,000 − 589,000 = **10,000 zat** (ZIP 317 minimum, 2 logical actions).
+
+### VERIFY 5 answer
+A send to a `utest1` address is accepted on NU7 testnet. Both test transactions were mined in Ironwood
+outputs, and their explorer links are listed above. The explorer itself 403s from the sandbox; the
+on-chain check was done with lightwalletd `GetTransaction`.
