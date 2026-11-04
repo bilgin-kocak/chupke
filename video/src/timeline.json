@@ -1,0 +1,272 @@
+{
+ "fps": 30,
+ "duration": 91.5,
+ "bpm": 96,
+ "beat": 0.625,
+ "drop": 9.4,
+ "final": 85.3,
+ "scenes": {
+  "hook": [
+   0,
+   9.4
+  ],
+  "title": [
+   9.4,
+   14.6
+  ],
+  "pitch": [
+   14.6,
+   26.8
+  ],
+  "shop": [
+   26.8,
+   33.2
+  ],
+  "pay": [
+   33.2,
+   37.1
+  ],
+  "watch": [
+   37.1,
+   43.9
+  ],
+  "wallet": [
+   43.9,
+   50.0
+  ],
+  "safety": [
+   50.0,
+   66.3
+  ],
+  "privacy": [
+   66.3,
+   77.5
+  ],
+  "hood": [
+   77.5,
+   85.0
+  ],
+  "close": [
+   85.0,
+   91.5
+  ]
+ },
+ "vo": {
+  "vo01": {
+   "start": 0.6,
+   "duration": 8.046,
+   "file": "audio/voice/vo01.mp3",
+   "text": "Buy a gift card online, and you hand over your email, your card, your name. Every purchase becomes a record of you.",
+   "captions": [
+    {
+     "text": "Buy a gift card online, and you hand over your email, your card, your name.",
+     "start": 0.6,
+     "end": 5.893
+    },
+    {
+     "text": "Every purchase becomes a record of you.",
+     "start": 5.893,
+     "end": 8.646
+    }
+   ]
+  },
+  "vo02": {
+   "start": 9.9,
+   "duration": 4.206,
+   "file": "audio/voice/vo02.mp3",
+   "text": "So we built Chupke. It's Hindi for \u201cquietly\u201d.",
+   "captions": [
+    {
+     "text": "So we built Chupke.",
+     "start": 9.9,
+     "end": 11.716
+    },
+    {
+     "text": "It's Hindi for \u201cquietly\u201d.",
+     "start": 11.716,
+     "end": 14.106
+    }
+   ]
+  },
+  "vo03": {
+   "start": 15.0,
+   "duration": 11.389,
+   "file": "audio/voice/vo03.mp3",
+   "text": "You pay in shielded ZEC. An agent buys the card on Bitrefill, and sends the code straight to your own wallet, as an encrypted memo. No account. No email.",
+   "captions": [
+    {
+     "text": "You pay in shielded ZEC.",
+     "start": 15.0,
+     "end": 16.81
+    },
+    {
+     "text": "An agent buys the card on Bitrefill, and sends the code straight to your own wallet, as an encrypted memo.",
+     "start": 16.81,
+     "end": 24.805
+    },
+    {
+     "text": "No account. No email.",
+     "start": 24.805,
+     "end": 26.389
+    }
+   ]
+  },
+  "vo04": {
+   "start": 27.0,
+   "duration": 5.956,
+   "file": "audio/voice/vo04.mp3",
+   "text": "This is live, on testnet. I pick a card, and paste a fresh address from my wallet.",
+   "captions": [
+    {
+     "text": "This is live, on testnet.",
+     "start": 27.0,
+     "end": 28.838
+    },
+    {
+     "text": "I pick a card, and paste a fresh address from my wallet.",
+     "start": 28.838,
+     "end": 32.956
+    }
+   ]
+  },
+  "vo05": {
+   "start": 33.4,
+   "duration": 3.474,
+   "file": "audio/voice/vo05.mp3",
+   "text": "Then I pay the QR, from a shielded wallet.",
+   "captions": [
+    {
+     "text": "Then I pay the QR, from a shielded wallet.",
+     "start": 33.4,
+     "end": 36.874
+    }
+   ]
+  },
+  "vo06": {
+   "start": 37.3,
+   "duration": 6.269,
+   "file": "audio/voice/vo06.mp3",
+   "text": "The agent sees the payment, checks the limits, and buys the card from the shop's own Bitrefill balance.",
+   "captions": [
+    {
+     "text": "The agent sees the payment, checks the limits, and buys the card from the shop's own Bitrefill balance.",
+     "start": 37.3,
+     "end": 43.569
+    }
+   ]
+  },
+  "vo07": {
+   "start": 44.2,
+   "duration": 5.068,
+   "file": "audio/voice/vo07.mp3",
+   "text": "And about a minute later, the code is in my wallet. Only my wallet can read it.",
+   "captions": [
+    {
+     "text": "And about a minute later, the code is in my wallet.",
+     "start": 44.2,
+     "end": 47.514
+    },
+    {
+     "text": "Only my wallet can read it.",
+     "start": 47.514,
+     "end": 49.268
+    }
+   ]
+  },
+  "vo08": {
+   "start": 50.4,
+   "duration": 9.326,
+   "file": "audio/voice/vo08.mp3",
+   "text": "And it's careful with money. If the card fails, you're refunded, with the reason. Over the limit? Refunded. Pay twice? Refunded.",
+   "captions": [
+    {
+     "text": "And it's careful with money.",
+     "start": 50.4,
+     "end": 52.472
+    },
+    {
+     "text": "If the card fails, you're refunded, with the reason. Over the limit?",
+     "start": 52.472,
+     "end": 57.505
+    },
+    {
+     "text": "Refunded. Pay twice? Refunded.",
+     "start": 57.505,
+     "end": 59.726
+    }
+   ]
+  },
+  "vo09": {
+   "start": 60.2,
+   "duration": 5.486,
+   "file": "audio/voice/vo09.mp3",
+   "text": "We even killed the agent mid-delivery. It still sent exactly one code.",
+   "captions": [
+    {
+     "text": "We even killed the agent mid-delivery.",
+     "start": 60.2,
+     "end": 63.221
+    },
+    {
+     "text": "It still sent exactly one code.",
+     "start": 63.221,
+     "end": 65.686
+    }
+   ]
+  },
+  "vo10": {
+   "start": 66.7,
+   "duration": 10.266,
+   "file": "audio/voice/vo10.mp3",
+   "text": "Bitrefill never learns who you are. The chain sees only encrypted data. Codes are never stored, and your reply address is deleted an hour after delivery.",
+   "captions": [
+    {
+     "text": "Bitrefill never learns who you are.",
+     "start": 66.7,
+     "end": 69.08
+    },
+    {
+     "text": "The chain sees only encrypted data.",
+     "start": 69.08,
+     "end": 71.459
+    },
+    {
+     "text": "Codes are never stored, and your reply address is deleted an hour after delivery.",
+     "start": 71.459,
+     "end": 76.966
+    }
+   ]
+  },
+  "vo11": {
+   "start": 77.8,
+   "duration": 6.426,
+   "file": "audio/voice/vo11.mp3",
+   "text": "The public site holds no keys. A private worker, with a view-only inbox, does the buying.",
+   "captions": [
+    {
+     "text": "The public site holds no keys.",
+     "start": 77.8,
+     "end": 79.991
+    },
+    {
+     "text": "A private worker, with a view-only inbox, does the buying.",
+     "start": 79.991,
+     "end": 84.226
+    }
+   ]
+  },
+  "vo12": {
+   "start": 85.3,
+   "duration": 3.553,
+   "file": "audio/voice/vo12.mp3",
+   "text": "Chupke. Gift cards, bought quietly.",
+   "captions": [
+    {
+     "text": "Chupke. Gift cards, bought quietly.",
+     "start": 85.3,
+     "end": 88.853
+    }
+   ]
+  }
+ }
+}

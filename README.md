@@ -211,5 +211,6 @@ balance is 0 and none was needed for the demo. The real-product path is built an
 `src/` holds config, logging, ids, `db/`, `zcash/` (wallet interface, zingo adapter, memo, ZIP 321, address checks),
 `bitrefill/` (client, limiter, redemption), `engine/` (guard, route, fulfill, refund, tick), `web/` (server, views, theme, QR),
 and `worker.ts`. `scripts/` holds the zingo-cli build, smoke tests, buy-once, product search (`find-products`), the MCP catalog, buyer pay/inbox, the refund suite,
-the rescan, inbox creation and the evidence table. `test/` holds the vitest suite. `docs/` holds WALLET.md (Zcash tooling),
+the rescan, inbox creation and the evidence table. `test/` holds the vitest suite. `video/` holds the demo video's source
+(Remotion scenes, ElevenLabs voice, a synthesized soundtrack and live captures; see video/README.md). `docs/` holds WALLET.md (Zcash tooling),
 NOTES.md (runs and decisions) and EVIDENCE.md.
