@@ -94,6 +94,18 @@ VERIFY in M0 using help and real runs, and record in docs/WALLET.md:
 3. How to export the UFVK and get the chain height.
 4. How many confirmations received notes need before they're spendable.
 5. That a send to a utest1 address is accepted on NU7 testnet and shows on https://testnet.zcashexplorer.app/transactions/<txid>.
+> VERIFIED in M0 (2026-11-04; zingo-cli 0.5.0 at zingolib 3f2529e; details in docs/WALLET.md):
+> 1. `notes all` prints JSON for each received output (txid, output_index, value, memo, status). `messages` prints JSON for memo-bearing value transfers, both sent and received.
+> 2. `send` only proposes, and the proposal holds sync until `confirm` or `decline`. `quicksend` combines both and prints JSON `{"txids":[...]}`.
+> 3. `export_ufvk` prints JSON `{ufvk, birthday}`. The chain height comes from `info` (`latest_block_height`); the wallet's last-seen height comes from `height`.
+> 4. The wallet default is min_confirmations = 3 (change it with `settings min_confirmations <n>`).
+> 5. PENDING until the wallets are funded. testnet.zcashexplorer.app returns 403 to the sandbox, so the txid is checked in a browser and with lightwalletd GetTransaction (scripts/tx-status.ts).
+> Corrections to the README facts above:
+> - The default build sends every transaction over the Nym mixnet and fails closed, and a build without `nym` is offline-only. Chupke therefore builds with `--no-default-features --features nakednet-test-mode` (scripts/build-zingo.sh).
+> - Sessions are offline-first; `--server` implies online consent.
+> - Wallets must be created with `--waitsync`, or later `--waitsync` calls never return.
+> - nym-proxy is now a workspace member, so the `--manifest-path zingo-netutils/Cargo.toml` command is stale.
+> - The UA has one orchard-type receiver; balances and notes report an `ironwood` pool.
 Adapter rules: serialize calls per data dir (async mutex); 120 s timeout; parse stdout defensively with zod; never log raw stdout (log the command name, exit code and duration only). Wallet birthday = current height - 100.
 Fallback, only if zingo-cli fails: zcash-devtool.
 - "cargo run --release --all-features -- wallet -w <dir> init --name N -i key.txt -n test -s zecrocks"
@@ -106,6 +118,7 @@ Faucets: Fauzec (1 TAZ/day/address), Valar, Jino Labs. Mentors can send more.
 
 7. BITREFILL REST V2
 Base URL https://api.bitrefill.com/v2 (their OpenAPI shows api-bitrefill.com; VERIFY with /ping). Header "Authorization: Bearer <BITREFILL_API_KEY>".
+> VERIFIED 2026-11-04: both hosts answer GET /v2/ping (401 `no_token` without a key). We use https://api.bitrefill.com/v2, as the Quickstart does. The authenticated calls, test products and the redemption_info shape are PENDING until the key arrives.
 Endpoints: GET /ping (1 req per 3 s), GET /accounts/balance, GET /products/search?q=, GET /products/{id} (with packages[]), POST /invoices, POST /invoices/{id}/pay, GET /invoices/{id}, GET /orders/{id}.
 Create invoice: POST /invoices with
 {"products":[{"product_id":"...","package_id":"<exact string from product details>","quantity":1}],"payment_method":"balance","auto_pay":false}
