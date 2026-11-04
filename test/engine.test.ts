@@ -10,7 +10,7 @@ import { Engine } from "../src/engine/tick.js";
 import { createLogger } from "../src/log.js";
 import { createOrder } from "../src/orders.js";
 import { buildPaymentMemo, deliveryTag } from "../src/zcash/memo.js";
-import { NotSupportedError, paymentKey, type IncomingOutput, type SentOutput, type ZcashWallet } from "../src/zcash/wallet.js";
+import { NotSupportedError, SendNotBroadcastError, paymentKey, type IncomingOutput, type SentOutput, type ZcashWallet } from "../src/zcash/wallet.js";
 import { fakeUa } from "./helpers.js";
 
 const ALLOWLIST: AllowlistEntry[] = [
@@ -25,8 +25,11 @@ class FakeWallet implements ZcashWallet {
   sent: Array<SentOutput & { to: string }> = [];
   sends = 0;
   listSentSupported = true;
-  /** Throw on the next send; "after" = the tx went out but the call failed (lost response / crash). */
-  failNextSend: "before" | "after" | null = null;
+  /**
+   * Throw on the next send. "before" = unknown failure before broadcast, "after" = the tx went out but
+   * the call failed (lost response / crash), "reject" = refused at proposal (nothing broadcast, known).
+   */
+  failNextSend: "before" | "after" | "reject" | null = null;
   async info() {
     return { chainHeight: 1000, walletHeight: 1000 };
   }
@@ -50,6 +53,10 @@ class FakeWallet implements ZcashWallet {
     if (this.failNextSend === "before") {
       this.failNextSend = null;
       throw new Error("send failed before broadcast");
+    }
+    if (this.failNextSend === "reject") {
+      this.failNextSend = null;
+      throw new SendNotBroadcastError("quicksend", 1, "Propose send error: Insufficient balance");
     }
     this.sent.push({ txid, to, amountZat, memo });
     if (this.failNextSend === "after") {
@@ -344,6 +351,37 @@ describe("invariants (SPEC §13)", () => {
       expect(text).not.toContain("CHUPKE1 ");
     }
     expect(h.wallet.sent.some((s) => s.memo!.includes(CODE_PREFIX))).toBe(true); // the code did go out, by memo only
+  });
+});
+
+describe("sends refused before broadcast", () => {
+  it("a delivery refused at proposal retries on normal backoff and sends once", async () => {
+    const reply = fakeUa();
+    const order = h.order("test-ok", reply);
+    h.pay(order.id, order.price_zat, reply);
+    h.wallet.failNextSend = "reject";
+    await h.ticks(1);
+    const f = h.store.getFulfillment(order.id)!;
+    expect(f.state).toBe("delivery_sending");
+    expect(f.send_started_at).toBeNull(); // known not sent: no resend guard
+    h.advance(10_000); // well under the 180 s resend guard
+    await h.ticks(1);
+    expect(h.store.getFulfillment(order.id)!.state).toBe("memo_sent");
+    expect(h.wallet.sends).toBe(2);
+    expect(h.wallet.sent).toHaveLength(1);
+  });
+
+  it("a refund refused at proposal goes back to refund_pending and is retried", async () => {
+    const reply = fakeUa();
+    const order = h.order("test-ok", reply);
+    const out = h.pay(order.id, order.price_zat - 1, reply);
+    h.wallet.failNextSend = "reject";
+    await h.ticks(1);
+    expect(h.store.getPayment(out.key)!.state).toBe("refund_pending");
+    h.advance(10_000);
+    await h.ticks(1);
+    expect(h.store.getPayment(out.key)!.state).toBe("refunded");
+    expect(h.wallet.sent).toHaveLength(1);
   });
 });
 

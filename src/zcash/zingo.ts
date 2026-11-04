@@ -5,6 +5,7 @@ import type { Logger } from "pino";
 import { z } from "zod";
 import { log as defaultLog, scrub } from "../log.js";
 import {
+  SendNotBroadcastError,
   WalletCommandError,
   paymentKey,
   type IncomingOutput,
@@ -324,7 +325,12 @@ export class ZingoWallet implements ZcashWallet {
             .split("\n")
             .filter((l) => /^\s*(Error|error|caused by)/.test(l))
             .join(" | ");
-          return reject(new WalletCommandError(name, code, `zingo-cli ${name} exited ${code}: ${scrub(why).slice(0, 300) || "no error text"}`));
+          const message = `zingo-cli ${name} exited ${code}: ${scrub(why).slice(0, 300) || "no error text"}`;
+          // A failure at the proposal stage means nothing was built or broadcast.
+          if (name === "quicksend" && /Propose send error|Insufficient balance/.test(why)) {
+            return reject(new SendNotBroadcastError(name, code, message));
+          }
+          return reject(new WalletCommandError(name, code, message));
         }
         resolvePromise(Buffer.concat(out).toString("utf8"));
       });

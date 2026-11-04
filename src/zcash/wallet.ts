@@ -65,6 +65,17 @@ export class WalletCommandError extends Error {
 }
 
 /**
+ * A send the wallet refused before building/broadcasting anything (e.g. "Propose send error:
+ * Insufficient balance"). Safe to retry without checking listSent: no money moved.
+ */
+export class SendNotBroadcastError extends WalletCommandError {
+  constructor(command: string, exitCode: number | null, message: string) {
+    super(command, exitCode, message);
+    this.name = "SendNotBroadcastError";
+  }
+}
+
+/**
  * payments.key: "<txid>:<pool>:<outputIndex>", or "<txid>:<sha256(memo|amount)[0..8]>" when the
  * wallet reports no output index.
  */

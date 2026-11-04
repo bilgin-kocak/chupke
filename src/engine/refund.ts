@@ -1,6 +1,6 @@
 import type { PaymentRow } from "../db/store.js";
 import { buildRefundMemo, refundTag } from "../zcash/memo.js";
-import { NotSupportedError } from "../zcash/wallet.js";
+import { NotSupportedError, SendNotBroadcastError } from "../zcash/wallet.js";
 import { backoffAt, errMsg, type EngineDeps } from "./deps.js";
 import { PURCHASE_FAILED_REASONS, reasonCode, reasonText } from "./guard.js";
 
@@ -49,7 +49,14 @@ async function sendRefund(d: EngineDeps, p: PaymentRow): Promise<void> {
   d.store.updatePayment(p.key, { state: "refund_sending", attempts: p.attempts + 1, send_started_at: now, updated_at: now });
   d.store.addEvent(now, "refund_sending", { orderId: p.order_id, paymentKey: p.key }, `${p.amount_zat} zat, reason ${reasonCode(p.reason)}`);
   // The shop pays the fee from its float; the buyer gets the full amount back.
-  const { txid } = await d.wallet.send(p.reply_ua, p.amount_zat, memo);
+  let txid: string;
+  try {
+    ({ txid } = await d.wallet.send(p.reply_ua, p.amount_zat, memo));
+  } catch (e) {
+    // Refused before anything was broadcast: back to refund_pending, retried on normal backoff.
+    if (e instanceof SendNotBroadcastError) d.store.updatePayment(p.key, { state: "refund_pending", send_started_at: null, updated_at: d.now() });
+    throw e;
+  }
   finishRefund(d, p, txid);
 }
 

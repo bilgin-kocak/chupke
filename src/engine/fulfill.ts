@@ -2,7 +2,7 @@ import { BitrefillError, allOrdersDelivered, invoiceFailed, invoiceUnpaid, type 
 import { hasRedeemable, normalizeRedemption } from "../bitrefill/redemption.js";
 import type { FulfillmentRow, OrderRow, PaymentRow } from "../db/store.js";
 import { buildDeliveryMemo, deliveryTag } from "../zcash/memo.js";
-import { NotSupportedError } from "../zcash/wallet.js";
+import { NotSupportedError, SendNotBroadcastError } from "../zcash/wallet.js";
 import { backoffAt, errMsg, type EngineDeps } from "./deps.js";
 
 /**
@@ -180,7 +180,14 @@ async function sendDelivery(c: Ctx): Promise<void> {
 
   const startedAt = d.now();
   d.store.updateFulfillment(order.id, { send_started_at: startedAt, attempts: f.attempts + 1, updated_at: startedAt });
-  const { txid } = await d.wallet.send(replyUa, d.cfg.deliveryAmountZat, memo);
+  let txid: string;
+  try {
+    ({ txid } = await d.wallet.send(replyUa, d.cfg.deliveryAmountZat, memo));
+  } catch (e) {
+    // Nothing went out (e.g. change not spendable yet): retry on normal backoff, no listSent wait.
+    if (e instanceof SendNotBroadcastError) d.store.updateFulfillment(order.id, { send_started_at: null });
+    throw e;
+  }
   finishDelivery(c, txid);
 }
 
