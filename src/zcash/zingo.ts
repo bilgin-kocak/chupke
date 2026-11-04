@@ -176,11 +176,15 @@ export class ZingoWallet implements ZcashWallet {
    * Create (or restore, when `seed` is given) the wallet. Always with --waitsync, so later
    * --waitsync calls terminate. The seed travels in ZINGO_SEED, never on the command line.
    */
-  async initWallet(restore?: { seed: string; birthday: number }): Promise<void> {
+  async initWallet(restore?: { seed: string; birthday: number } | { viewkey: string; birthday: number }): Promise<void> {
     if (this.walletExists()) throw new Error(`wallet already exists in ${this.dir}`);
     mkdirSync(this.dir, { recursive: true, mode: 0o700 });
-    const extra = restore ? ["--birthday", String(restore.birthday)] : [];
-    const env = restore ? { ZINGO_SEED: restore.seed } : undefined;
+    const extra: string[] = restore ? ["--birthday", String(restore.birthday)] : [];
+    let env: Record<string, string> | undefined;
+    if (restore && "seed" in restore) env = { ZINGO_SEED: restore.seed };
+    // zingo-cli has no environment variable for a viewing key, so it goes on the command line
+    // (visible in the local process list while the init runs; docs/WALLET.md notes this).
+    if (restore && "viewkey" in restore) extra.push("--viewkey", restore.viewkey);
     await this.run("init", "wait", [...extra, "addresses"], { allowMissingWallet: true, env });
   }
 

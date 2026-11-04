@@ -45,6 +45,40 @@ export interface ZcashWallet {
   send(to: string, amountZat: number, memo: string): Promise<{ txid: string }>;
 }
 
+/**
+ * WALLET_MODE=split: watch with a view-only inbox (from the shop UFVK), spend with the outbox
+ * (the full wallet of the same account). Both derive the same addresses and output keys, so
+ * payments.key is identical in either mode and switching modes never reprocesses an output.
+ */
+export class SplitWallet implements ZcashWallet {
+  constructor(
+    private readonly inbox: ZcashWallet,
+    private readonly outbox: ZcashWallet,
+  ) {}
+  info(): Promise<WalletInfo> {
+    return this.inbox.info();
+  }
+  async sync(): Promise<void> {
+    await this.inbox.sync();
+    await this.outbox.sync(); // listSent and balance read the outbox
+  }
+  primaryAddress(): Promise<string> {
+    return this.inbox.primaryAddress();
+  }
+  balance(): Promise<WalletBalance> {
+    return this.outbox.balance();
+  }
+  listIncoming(): Promise<IncomingOutput[]> {
+    return this.inbox.listIncoming();
+  }
+  listSent(): Promise<SentOutput[]> {
+    return this.outbox.listSent();
+  }
+  send(to: string, amountZat: number, memo: string): Promise<{ txid: string }> {
+    return this.outbox.send(to, amountZat, memo);
+  }
+}
+
 export class NotSupportedError extends Error {
   constructor(what: string) {
     super(`not supported: ${what}`);

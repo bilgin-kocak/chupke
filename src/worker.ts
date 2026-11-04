@@ -9,6 +9,7 @@ import { openDb } from "./db/schema.js";
 import { Store } from "./db/store.js";
 import { Engine } from "./engine/tick.js";
 import { createLogger } from "./log.js";
+import { SplitWallet, type ZcashWallet } from "./zcash/wallet.js";
 import { ZingoWallet } from "./zcash/zingo.js";
 
 loadDotEnv();
@@ -17,13 +18,18 @@ const log = createLogger({ name: "worker" });
 const store = new Store(openDb(cfg.DATABASE_PATH));
 const allowlist = loadAllowlist(cfg.ALLOWLIST_PATH);
 
-const wallet = new ZingoWallet({
-  cliPath: cfg.ZINGO_CLI_PATH,
-  dataDir: cfg.SHOP_WALLET_DIR,
-  server: cfg.LIGHTWALLETD_URL,
-  extraCaFile: cfg.ZINGO_EXTRA_CA_FILE,
-  logger: log.child({ component: "zingo" }),
-});
+const zingo = (dataDir: string) =>
+  new ZingoWallet({
+    cliPath: cfg.ZINGO_CLI_PATH,
+    dataDir,
+    server: cfg.LIGHTWALLETD_URL,
+    extraCaFile: cfg.ZINGO_EXTRA_CA_FILE,
+    logger: log.child({ component: "zingo" }),
+  });
+const outbox = zingo(cfg.SHOP_WALLET_DIR);
+const inbox = cfg.WALLET_MODE === "split" ? zingo(cfg.INBOX_WALLET_DIR) : undefined;
+// split: watch with the view-only inbox, spend with the full shop wallet (SPEC §6).
+const wallet: ZcashWallet = inbox ? new SplitWallet(inbox, outbox) : outbox;
 const bitrefill = new BitrefillClient({
   baseUrl: cfg.BITREFILL_BASE_URL,
   apiKey: cfg.BITREFILL_API_KEY,
@@ -55,9 +61,11 @@ const engine = new Engine({
   },
 });
 
-if (!wallet.walletExists()) {
-  log.fatal({ dir: cfg.SHOP_WALLET_DIR }, "no shop wallet; create it first (see docs/WALLET.md)");
-  process.exit(1);
+for (const w of [outbox, inbox]) {
+  if (w && !w.walletExists()) {
+    log.fatal({ dir: w.dataDir }, "wallet missing; create it first (docs/WALLET.md, scripts/init-inbox.ts for split mode)");
+    process.exit(1);
+  }
 }
 
 const { shopUa, ingestFromHeight } = await engine.init();
@@ -66,7 +74,14 @@ if (cfg.SHOP_UA && cfg.SHOP_UA !== shopUa) {
   process.exit(1);
 }
 log.info(
-  { ingestFromHeight, tickMs: cfg.TICK_MS, allowReal: cfg.ALLOW_REAL_PURCHASES, paused: cfg.PAUSE_PURCHASES, skus: allowlist.map((e) => e.sku) },
+  {
+    ingestFromHeight,
+    walletMode: cfg.WALLET_MODE,
+    tickMs: cfg.TICK_MS,
+    allowReal: cfg.ALLOW_REAL_PURCHASES,
+    paused: cfg.PAUSE_PURCHASES,
+    skus: allowlist.map((e) => e.sku),
+  },
   "worker started",
 );
 
