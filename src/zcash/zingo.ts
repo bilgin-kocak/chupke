@@ -59,8 +59,13 @@ function pidAlive(pid: number): boolean {
   }
 }
 
-/** Cross-process guard: never two zingo-cli processes on one wallet directory. */
-async function withDirLock<T>(dir: string, timeoutMs: number, fn: () => Promise<T>): Promise<T> {
+/**
+ * Cross-process guard: never two zingo-cli processes on one wallet directory.
+ * The lock file lists the owner's PID and, once spawned, its zingo-cli child's PID. It is stale only
+ * when every listed process is gone: if a worker is killed (kill -9) mid-send, its orphaned zingo-cli
+ * may still be broadcasting and saving the wallet, and a restarted worker must wait for it.
+ */
+export async function withDirLock<T>(dir: string, timeoutMs: number, fn: (registerChild: (pid: number) => void) => Promise<T>): Promise<T> {
   const path = join(dir, LOCK_FILE);
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -69,17 +74,29 @@ async function withDirLock<T>(dir: string, timeoutMs: number, fn: () => Promise<
       break;
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
-      const holder = Number(readFileSync(path, "utf8").trim());
-      if (!Number.isInteger(holder) || !pidAlive(holder) || holder === process.pid) {
-        unlinkSync(path);
+      let pids: number[] = [];
+      try {
+        pids = readFileSync(path, "utf8").trim().split(/\s+/).map(Number).filter(Number.isInteger);
+      } catch {
+        continue; // released between our write and read
+      }
+      // Our own PID can only be a leftover (calls are serialized in-process); our child may still be exiting.
+      const alive = pids.filter((p) => p !== process.pid && p > 0 && pidAlive(p));
+      if (alive.length === 0) {
+        try {
+          unlinkSync(path);
+        } catch {
+          /* someone else removed it */
+        }
         continue;
       }
-      if (Date.now() > deadline) throw new Error(`wallet dir ${dir} is locked by pid ${holder}`);
+      if (Date.now() > deadline) throw new Error(`wallet dir ${dir} is locked by pid ${alive.join(",")}`);
       await new Promise((r) => setTimeout(r, 250));
     }
   }
+  const registerChild = (pid: number) => writeFileSync(path, `${process.pid} ${pid}`);
   try {
-    return await fn();
+    return await fn(registerChild);
   } finally {
     try {
       unlinkSync(path);
@@ -287,7 +304,9 @@ export class ZingoWallet implements ZcashWallet {
       return Promise.reject(new WalletCommandError(name, null, `no wallet in ${this.dir}; run initWallet first`));
     }
     const timeoutMs = extra.timeoutMs ?? this.timeoutMs;
-    return serialize(this.dir, () => withDirLock(this.dir, timeoutMs, () => this.spawnOnce(name, mode, commandArgs, extra.env, timeoutMs)));
+    return serialize(this.dir, () =>
+      withDirLock(this.dir, timeoutMs, (registerChild) => this.spawnOnce(name, mode, commandArgs, extra.env, timeoutMs, registerChild)),
+    );
   }
 
   private spawnOnce(
@@ -296,6 +315,7 @@ export class ZingoWallet implements ZcashWallet {
     commandArgs: string[],
     extraEnv: Record<string, string> | undefined,
     timeoutMs: number,
+    registerChild: (pid: number) => void,
   ): Promise<string> {
     const args = ["--chain", this.opts.chain ?? "testnet", "--data-dir", this.dir];
     if (mode === "offline") args.push("--offline");
@@ -311,6 +331,7 @@ export class ZingoWallet implements ZcashWallet {
     const t0 = Date.now();
     return new Promise((resolvePromise, reject) => {
       const child = spawn(this.opts.cliPath, args, { env, stdio: ["ignore", "pipe", "pipe"] });
+      if (child.pid !== undefined) registerChild(child.pid);
       const out: Buffer[] = [];
       const err: Buffer[] = [];
       child.stdout.on("data", (d: Buffer) => out.push(d));
