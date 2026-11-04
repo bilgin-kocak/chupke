@@ -55,8 +55,8 @@ Don't set `ZINGO_EXTRA_CA_FILE` on a normal machine. It exists only for the sand
 docker compose pull && docker compose up -d
 ```
 
-If the pull is denied (the GHCR package is private), either make it public on GitHub (Packages → chupke →
-Package settings → Change visibility) or build locally:
+The package is public, so no `docker login` is needed. This exact image was run end to end as containers on
+4 Nov (docs/NOTES.md, "Docker stack test"). If a pull is ever denied, build locally instead:
 
 ```bash
 docker compose up -d --build

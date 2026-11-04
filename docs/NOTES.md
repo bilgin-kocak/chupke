@@ -102,6 +102,32 @@ form `https://testnet.zcashexplorer.app/transactions/<txid>`.
   no retry on pay or invoice creation, and crashes after create, during paying, and in refund_sending.
 - A 429 wasn't provoked live, to stay well inside Bitrefill's limits.
 
+## Docker stack test (Wed 4 Nov 2026, 15:05–15:10 IST)
+
+This exercised the published image `ghcr.io/bilgin-kocak/chupke:d53847e…`, built by CI and pulled anonymously
+(the package is public), as the web and worker containers from `docker-compose.yml`.
+
+- **Sandbox-only override** (kept out of the repo):
+  - Host networking, so the containers reach the sandbox egress proxy.
+  - The sandbox CA mounted for zingo-cli and Node.
+  - `HTTPS_PROXY` plus `NODE_USE_ENV_PROXY=1`, so the Bitrefill network secret is injected.
+  - The sandbox's own `data/db` mounted into both containers, and `data/wallets` into the worker only. This is
+    the same split as the named volumes. The bare sandbox processes were stopped first, so there was only one worker.
+- **Bug found by the test's preparation:**
+  - Compose passes `${VAR:-}` as an empty string, and zod rejected `PUBLIC_BASE_URL=""`, so the web container
+    would have crashed.
+  - Fixed in "Treat empty env vars as unset". Tests now parse `.env.example` verbatim.
+- **Result:**
+  - `/healthz` showed `shopReady:true` with a fresh tick.
+  - The worker container logged `walletMode: split` and continued from the shared database.
+  - Order 7472T5V1GN was paid from the CLI buyer wallet (`5dfaadc29e211d4aff042e78b2baa97a79967c9c992d4f2d8ebda9073b99b250`):
+    seen at 15:09:05, bought at 15:09:56, delivery memo sent at 15:10:01
+    (`2fd0522756cd9a93099b2a8e636c2083d4cb012f95dd7c718d29e301053fc96b`).
+  - The code arrived in the buyer wallet.
+- **Container logs:** 0 hits for either UA, `CHUPKE1`, `Code:`, `utest1` and `uviewtest`, and no warn or error lines.
+- **Not exercised here:** restoring the wallet from `ZINGO_SEED` inside a fresh container volume. That uses the same
+  `initWallet` path verified live in docs/WALLET.md ("Restore from seed").
+
 ## Adapter rules as built (src/zcash/zingo.ts)
 
 - One zingo-cli process per call, serialized per data dir, with a 120 s timeout (SIGTERM, then SIGKILL).
